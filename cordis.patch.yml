@@ -1,0 +1,8 @@
+- insert:
+    - id: dafeiyu-memory
+      name: dsh-dafeiyu-memory
+      config:
+        bank: dafeiyu
+        recallChars: 2400
+        toolChars: 6000
+        maintenanceMinutes: 30
