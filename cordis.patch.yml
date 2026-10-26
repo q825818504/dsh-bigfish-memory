@@ -1,8 +1,18 @@
 - insert:
     - id: dafeiyu-memory
       name: dsh-dafeiyu-memory
+      inject:
+        - sessions
+        - sessionQuery
+        - agents
+        - systemPrompt
+        - tools
+        - connection
+        - workspaceRegistry
+        - settings
       config:
         bank: dafeiyu
+        bindingMode: session
         recallChars: 2400
         toolChars: 6000
         maintenanceMinutes: 30
