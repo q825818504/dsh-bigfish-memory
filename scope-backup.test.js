@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { MemoryStore } from './lib/store.js';
 import { sessionScopeIds } from './lib/adapter.js';
-import { apply, options } from './index.js';
+import { apply, options, Config } from './index.js';
 
 const SETTINGS_ID = 'include:dafeiyu-memory';
 
@@ -22,6 +22,34 @@ test('empty database config selects the DSH_HOME default file path', () => {
     if (previousHome === undefined) delete process.env.DSH_HOME;
     else process.env.DSH_HOME = previousHome;
     rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('options reads volatile references as plain values', () => {
+  // Host settings.update only accepts fields beneath a volatile node, so the editable
+  // binding fields resolve to references. options() must unwrap them like a runtime Config.
+  const reference = value => ({ get: () => value });
+  const resolved = options({
+    bindingMode: reference('workspace'),
+    bindingWorkspaceId: reference('workspace-1'),
+    bindingSessionIds: reference(['session-a']),
+    database: reference(''),
+  });
+  assert.equal(resolved.bindingMode, 'workspace');
+  assert.equal(resolved.bindingWorkspaceId, 'workspace-1');
+  assert.deepEqual(resolved.bindingSessionIds, ['session-a']);
+  assert.ok(resolved.database.endsWith('memory.sqlite3'));
+});
+
+test('editable binding fields are declared volatile for settings writes', () => {
+  // Host settings.write() rejects any path not beneath a volatile node, so assert the
+  // schema itself marks these fields volatile (the JSON projection nests them under meta).
+  const dict = Config.dict ?? {};
+  for (const field of ['database', 'bindingMode', 'bindingSessionIds', 'bindingWorkspaceId', 'pendingMigrationFrom', 'pendingMigrationTarget', 'pendingMigrationId', 'pendingMigrationSourceIdentity']) {
+    assert.equal(dict[field]?.meta?.volatile, true, `${field} must be volatile so settings.update accepts it`);
+  }
+  for (const field of ['bank', 'recallChars', 'toolChars', 'maintenanceMinutes']) {
+    assert.notEqual(dict[field]?.meta?.volatile, true, `${field} stays ordinary configuration`);
   }
 });
 
@@ -66,6 +94,17 @@ function createHostFixture(initialConfig, options = {}) {
   let updateFailure = 'none';
   let readSessionError = options.readSessionError ?? null;
   let closed = false;
+  const useConfigEditor = options.useConfigEditor === true;
+  const editorWrites = [];
+  const editor = {
+    async edit(entry, change) {
+      editorWrites.push(entry.options.id);
+      const next = change({ ...config }, { ...config });
+      for (const key of Object.keys(config)) if (!Object.hasOwn(next, key)) delete config[key];
+      Object.assign(config, next);
+      revision++;
+    },
+  };
   const config = {
     bank: 'dafeiyu', bindingMode: 'session', bindingWorkspaceId: '', maintenanceMinutes: 0,
     ...initialConfig,
@@ -111,7 +150,11 @@ function createHostFixture(initialConfig, options = {}) {
         },
       },
     },
+    // The owning Loader entry plus configEditor is the write path a live plugin uses;
+    // settings.update cannot address this row because it publishes the namespaced id.
+    fiber: useConfigEditor ? { entry: { options: { id: 'dafeiyu-memory', name: 'dsh-dafeiyu-memory' } } } : undefined,
     settings,
+    get(key) { return key === 'configEditor' ? editor : undefined; },
     sessions: { list: () => sessions, get: () => undefined },
     sessionQuery: {
       listSessions: async () => sessions.map(session => ({ header: session.header, live: true, persisted: true })),
@@ -143,6 +186,7 @@ function createHostFixture(initialConfig, options = {}) {
     config,
     get revision() { return revision; },
     get unversionedWrites() { return unversionedWrites; },
+    get editorWrites() { return editorWrites; },
     setUpdateFailure(value) { updateFailure = value; },
     setReadSessionError(error) { readSessionError = error; },
     async close() {
@@ -215,6 +259,24 @@ test('replaying the same source event is idempotent', t => {
   assert.equal(store.capture({ ...event, content: 'A duplicate must not replace the original.' }), null);
   assert.equal(store.stats().messages, 1);
   assert.equal(store.stats().chunks, 1);
+});
+
+test('settings writes go through the owning Loader entry when configEditor is available', async t => {
+  const directory = temporaryDirectory();
+  const fixture = createHostFixture({ database: join(directory, 'memory.sqlite3') }, {
+    useConfigEditor: true,
+    workspaces: [{ id: 'workspace-1', title: 'Project One', sessionIds: [] }],
+  });
+  t.after(async () => { await fixture.close(); rmSync(directory, { recursive: true, force: true }); });
+
+  const mode = await invokeSettings(fixture, { action: 'set-binding-mode', bindingMode: 'workspace' });
+  assert.equal(mode.result.ok, true, mode.result.error?.message);
+  assert.equal(fixture.config.bindingMode, 'workspace');
+  const target = await invokeSettings(fixture, { action: 'set-workspace-target', workspaceId: 'workspace-1' });
+  assert.equal(target.result.ok, true, target.result.error?.message);
+  assert.equal(fixture.config.bindingWorkspaceId, 'workspace-1');
+  assert.deepEqual(fixture.editorWrites, ['dafeiyu-memory', 'dafeiyu-memory']);
+  assert.equal(fixture.unversionedWrites, 0, 'the settings fallback must not run when configEditor succeeds');
 });
 
 test('sessionScopeIds applies explicit multi-session and single-workspace targets', () => {
@@ -441,7 +503,7 @@ test('manifest and lock advertise both rc.2 and rc.3 without shipping tests', ()
   const zh = JSON.parse(readFileSync(new URL('./locale/zh.json', import.meta.url), 'utf8'));
   const patch = readFileSync(new URL('./cordis.patch.yml', import.meta.url), 'utf8');
 
-  assert.equal(manifest.version, '1.3.0');
+  assert.equal(manifest.version, '1.3.1');
   assert.equal(lock.version, manifest.version);
   assert.equal(lock.packages[''].version, manifest.version);
   assert.match(manifest.engines.dsh, /0\.2\.1-rc\.2/);

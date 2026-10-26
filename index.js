@@ -13,17 +13,34 @@ const CHANNEL='/api';
 const ENDPOINT='dafeiyu-memory/status';
 const SETTINGS_ENDPOINT='dafeiyu-memory/settings';
 const SETTINGS_ENTRY_ID='include:dafeiyu-memory';
+const PATCH_ID='dafeiyu-memory';
 const SESSION_PAGE_SIZE=100;
 export const inject=['sessions','sessionQuery','agents','systemPrompt','tools','connection','workspaceRegistry','settings'];
+// Host `settings.update/mutate` only accepts fields beneath a declared volatile node
+// (packages/config settings write() rejects every other path). The binding/migration
+// fields below are therefore volatile so the panel can persist them without remounting
+// the plugin; each one is read through `.get()` and defaults stay ordinary data.
 export const Config=z.object({
-  database:z.string().default(''),bank:z.string().default('dafeiyu'),bindingMode:z.string().default('session'),
-  bindingSessionIds:z.array(z.string()),bindingWorkspaceId:z.string().default(''),
-  pendingMigrationFrom:z.string(),pendingMigrationTarget:z.string(),
-  pendingMigrationId:z.string(),pendingMigrationSourceIdentity:z.string(),
+  database:z.string().default('').volatile(),bank:z.string().default('dafeiyu'),
+  bindingMode:z.string().default('session').volatile(),
+  bindingSessionIds:z.array(z.string()).volatile(),bindingWorkspaceId:z.string().default('').volatile(),
+  pendingMigrationFrom:z.string().volatile(),pendingMigrationTarget:z.string().volatile(),
+  pendingMigrationId:z.string().volatile(),pendingMigrationSourceIdentity:z.string().volatile(),
   preset:z.string().default(''),autoRecall:z.boolean().default(true),
   recallChars:z.number().default(2400),toolChars:z.number().default(6000),
   maintenanceMinutes:z.number().default(30),includeSubagents:z.boolean().default(false),
 });
+// Volatile fields resolve to a stable reference; ordinary fields stay plain values.
+function readConfig(raw,key){
+  const field=raw?.[key];
+  return field&&typeof field.get==='function'?field.get():field;
+}
+function plainConfig(raw){
+  if(!raw||typeof raw!=='object')return{};
+  const out={};
+  for(const [key,value] of Object.entries(raw))out[key]=value&&typeof value.get==='function'?value.get():value;
+  return out;
+}
 function expandHome(path){
   if(path==='~')return homedir();
   if(path.startsWith('~/')||path.startsWith('~\\'))return join(homedir(),path.slice(2));
@@ -32,7 +49,8 @@ function expandHome(path){
 export function options(config={}){
   const value={bank:'dafeiyu',bindingMode:'session',bindingWorkspaceId:'',preset:'',autoRecall:true,
     recallChars:2400,toolChars:6000,maintenanceMinutes:30,includeSubagents:false};
-  for(const [key,setting] of Object.entries(config??{}))if(setting!==undefined)value[key]=setting;
+  // `config` may be the resolved runtime Config (volatile references) or plain options (tests, CLI).
+  for(const [key,setting] of Object.entries(plainConfig(config)))if(setting!==undefined)value[key]=setting;
   if(!['session','workspace'].includes(value.bindingMode))throw new Error('dafeiyu-memory: invalid bindingMode');
   if(value.bindingSessionIds!==undefined){
     if(!Array.isArray(value.bindingSessionIds)||value.bindingSessionIds.some(id=>typeof id!=='string'||!id))throw new Error('dafeiyu-memory: invalid bindingSessionIds');
@@ -95,17 +113,46 @@ function settingsEntry(ctx){
   // The runtime contract allows an unversioned merge; keep the revision guard whenever one is published.
   return entry??{ns:SETTINGS_ENTRY_ID,revision:undefined};
 }
-async function updateConfig(ctx,patch){
-  const entry=settingsEntry(ctx);
-  if(entry.revision===undefined)await ctx.settings.update(entry.ns,patch);
-  else await ctx.settings.update(entry.ns,patch,entry.revision);
+// The owning Loader entry is the only reliably addressable target for a profile write:
+// `settings.write()` looks entries up by `entry.options.id` (here `dafeiyu-memory`), while
+// `settings.describe()` publishes the namespaced `include:dafeiyu-memory`, so the settings
+// path cannot find this row. `configEditor.edit(entry, change)` takes the entry object itself.
+function profileEntry(ctx){
+  const direct=ctx.fiber?.entry;
+  if(direct)return direct;
+  const editor=ctx.get?.('configEditor');
+  if(!editor||typeof editor.entries!=='function')return null;
+  const rows=editor.entries();
+  // Prefer the exact patch id, then fall back to the single entry whose id ends with it.
+  return rows.find(row=>row.options?.id===PATCH_ID)
+    ??rows.find(row=>String(row.options?.id??'').endsWith(`:${PATCH_ID}`))
+    ??null;
 }
-async function unsetConfig(ctx,keys){
-  const entry=settingsEntry(ctx);
-  const operations=keys.map(key=>({op:'unset',path:[key]}));
-  if(entry.revision===undefined)await ctx.settings.mutate(entry.ns,operations);
-  else await ctx.settings.mutate(entry.ns,operations,entry.revision);
+async function writeConfig(ctx,patch,removeKeys=[]){
+  const entry=profileEntry(ctx);
+  const editor=ctx.get?.('configEditor');
+  if(entry&&editor&&typeof editor.edit==='function'){
+    await editor.edit(entry,current=>{
+      const next={...current,...patch};
+      for(const key of removeKeys)delete next[key];
+      return next;
+    });
+    return true;
+  }
+  const settings=settingsEntry(ctx);
+  if(removeKeys.length&&typeof ctx.settings.mutate==='function'){
+    const operations=removeKeys.map(key=>({op:'unset',path:[key]}));
+    if(settings.revision===undefined)await ctx.settings.mutate(settings.ns,operations);
+    else await ctx.settings.mutate(settings.ns,operations,settings.revision);
+  }
+  if(Object.keys(patch).length){
+    if(settings.revision===undefined)await ctx.settings.update(settings.ns,patch);
+    else await ctx.settings.update(settings.ns,patch,settings.revision);
+  }
+  return false;
 }
+async function updateConfig(ctx,patch){return writeConfig(ctx,patch);}
+async function unsetConfig(ctx,keys){return writeConfig(ctx,{},keys);}
 function integrityOrThrow(store,label){
   const check=store.integrityCheck();
   if(!check.ok)throw new Error(`${label} SQLite integrity check failed: ${check.details.join('; ')}`);
@@ -450,7 +497,7 @@ export function apply(ctx,config){
       else store.close();
       throw error;
     }
-    console.info(`[dafeiyu-memory] 1.3.0 已启用；bank=${value.bank}；mode=${value.bindingMode}；数据库=${value.database}`);
+    console.info(`[dafeiyu-memory] 1.3.1 已启用；bank=${value.bank}；mode=${value.bindingMode}；数据库=${value.database}`);
     return async()=>{
       try{for(const dispose of routeDisposers.reverse())await dispose();}
       finally{

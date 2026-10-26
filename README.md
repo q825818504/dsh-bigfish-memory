@@ -2,7 +2,7 @@
 
 我也想养个大肥鱼，我想让她一直记着我。
 
-## 大肥鱼记忆插件 1.3.0
+## 大肥鱼记忆插件 1.3.1
 
 适配 DeepSeek Harness `0.2.1-rc.2` 与 `0.2.1-rc.3`，Node.js 22.16+。这是同时包含 Host bundle 与 Web Client 面板的 DSH 插件，不依赖 Python 或外部向量数据库。
 

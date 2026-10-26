@@ -68,6 +68,16 @@ window.__ModuleLoader__.load({
         retrySettings: '重新读取设置',
         settingsLoading: '正在读取记忆设置…',
         settingsUnavailable: '当前无法打开目录选择器。',
+        browseTitle: '选择保存目录',
+        browsePathLabel: '当前目录',
+        browseUp: '上一级',
+        browseHome: '用户目录',
+        browseConfirm: '使用此目录',
+        browseLoading: '正在读取目录…',
+        browseEmpty: '此目录没有子文件夹。',
+        browseCreatePlaceholder: '新建子文件夹名称',
+        browseCreate: '新建',
+        browseHint: '当前 DSH 组合提供目录浏览能力，请浏览并选择目标文件夹。',
         refresh: '刷新',
         refreshing: '刷新中…',
         loading: '正在读取本地记忆统计…',
@@ -165,6 +175,16 @@ window.__ModuleLoader__.load({
         retrySettings: 'Retry settings',
         settingsLoading: 'Reading memory settings…',
         settingsUnavailable: 'The directory picker is unavailable.',
+        browseTitle: 'Choose save folder',
+        browsePathLabel: 'Current folder',
+        browseUp: 'Up',
+        browseHome: 'Home',
+        browseConfirm: 'Use this folder',
+        browseLoading: 'Reading folder…',
+        browseEmpty: 'No subfolders here.',
+        browseCreatePlaceholder: 'New subfolder name',
+        browseCreate: 'Create',
+        browseHint: 'This DSH composition provides folder browsing; browse to and pick the target folder.',
         refresh: 'Refresh',
         refreshing: 'Refreshing…',
         loading: 'Reading local memory statistics…',
@@ -280,6 +300,10 @@ window.__ModuleLoader__.load({
       .dfm-target-option-title { display: block; overflow-wrap: anywhere; font-weight: 540; }
       .dfm-target-option-meta { display: block; margin-top: 2px; color: var(--dfm-muted); font-size: 11px; }
       .dfm-target-empty { padding: 12px 10px; color: var(--dfm-muted); font-size: 12px; }
+      .dfm-browse-entry { display: block; width: 100%; padding: 8px 10px; border: 0; border-bottom: 1px solid var(--dfm-border); background: transparent; color: inherit; font: inherit; font-size: 13px; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+      .dfm-browse-entry:last-child { border-bottom: 0; }
+      .dfm-browse-entry:hover:not(:disabled) { background: var(--dfm-surface-hover, var(--dfm-surface)); }
+      .dfm-browse-entry:disabled { cursor: default; opacity: .6; }
       .dfm-target-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
       .dfm-migration { margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--dfm-border); }
       .dfm-migration-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
@@ -466,6 +490,10 @@ window.__ModuleLoader__.load({
         const [sessionSearch, setSessionSearch] = React.useState('');
         const [loadingMore, setLoadingMore] = React.useState(false);
         const [busy, setBusy] = React.useState(false);
+        const [browseOpen, setBrowseOpen] = React.useState(false);
+        const [browse, setBrowse] = React.useState(null);
+        const [browseError, setBrowseError] = React.useState('');
+        const [browseName, setBrowseName] = React.useState('');
         const [error, setError] = React.useState('');
         const [notice, setNotice] = React.useState('');
         const currentMode = settings.bindingMode === 'workspace' ? 'workspace' : 'session';
@@ -482,6 +510,7 @@ window.__ModuleLoader__.load({
         const workspaceDirty = selectedWorkspaceId !== (settings.bindingWorkspaceId || '');
         const scopeDirty = currentMode === 'session' ? sessionDirty : workspaceDirty;
         const workspaces = Array.isArray(settings.workspaces) ? settings.workspaces : [];
+        const canChooseDirectory = typeof uiWorkspace?.pickDirectory === 'function' || typeof uiWorkspace?.listDirectory === 'function';
         const migration = settings.migration;
         const toggleSession = (id, checked) => setSelectedSessionIds(current => checked
           ? (current.includes(id) ? current : [...current, id])
@@ -533,10 +562,37 @@ window.__ModuleLoader__.load({
             setLoadingMore(false);
           }
         };
+        const pickWithBrowser = async () => {
+          // The composed picker may serve only the "browse" capability, so the native OS
+          // chooser can be refused at runtime even though pickDirectory is callable.
+          const listing = await uiWorkspace.listDirectory();
+          setBrowse({ path: listing.path, home: listing.home, crumbs: listing.crumbs ?? [], entries: listing.entries ?? [], loading: false });
+          setBrowseError('');
+          setBrowseOpen(true);
+        };
+        const loadBrowseDirectory = async path => {
+          setBrowse(previous => previous ? { ...previous, loading: true } : previous);
+          setBrowseError('');
+          try {
+            const listing = await uiWorkspace.listDirectory(path);
+            setBrowse({ path: listing.path, home: listing.home, crumbs: listing.crumbs ?? [], entries: listing.entries ?? [], loading: false });
+          } catch (browseLoadError) {
+            setBrowse(previous => previous ? { ...previous, loading: false } : previous);
+            setBrowseError(browseLoadError?.message || t('settingsUnavailable'));
+          }
+        };
         const chooseDirectory = async () => {
           setError('');
           setNotice('');
           if (typeof uiWorkspace?.pickDirectory !== 'function') {
+            if (typeof uiWorkspace?.listDirectory === 'function') {
+              try {
+                await pickWithBrowser();
+              } catch (browseError) {
+                setError(browseError?.message || t('settingsUnavailable'));
+              }
+              return;
+            }
             setError(t('settingsUnavailable'));
             return;
           }
@@ -548,6 +604,17 @@ window.__ModuleLoader__.load({
               setPendingTarget('');
             }
           } catch (pickerError) {
+            // "needs the native capability; the composed picker serves browse" — fall back
+            // to the in-app browser instead of surfacing an unusable error.
+            if (typeof uiWorkspace?.listDirectory === 'function') {
+              try {
+                await pickWithBrowser();
+                return;
+              } catch (browseError) {
+                setError(browseError?.message || pickerError?.message || t('settingsUnavailable'));
+                return;
+              }
+            }
             setError(pickerError?.message || t('settingsUnavailable'));
           }
         };
@@ -681,9 +748,9 @@ window.__ModuleLoader__.load({
               h('div', { className: 'dfm-setting-actions' },
                 h('button', {
                   type: 'button', className: 'dfm-action', onClick: chooseDirectory,
-                  disabled: busy || scopeDirty || typeof uiWorkspace?.pickDirectory !== 'function',
+                  disabled: busy || scopeDirty || !canChooseDirectory,
                 }, t('chooseDirectory')),
-                typeof uiWorkspace?.pickDirectory !== 'function' ? h('span', { className: 'dfm-setting-hint' }, t('settingsUnavailable')) : null))),
+                !canChooseDirectory ? h('span', { className: 'dfm-setting-hint' }, t('settingsUnavailable')) : null))),
           sessionControls,
           pendingMode ? h('div', { className: 'dfm-confirm' },
             h('p', null, t('modeConfirmBody')),
@@ -693,6 +760,59 @@ window.__ModuleLoader__.load({
                 type: 'button', className: 'dfm-action', disabled: busy, 'aria-busy': busy,
                 onClick: () => runAction({ action: 'set-binding-mode', bindingMode: pendingMode }),
               }, busy ? t('savingSettings') : t('confirmChange')))) : null,
+          browseOpen && browse ? h('div', { className: 'dfm-confirm' },
+            h('p', null, t('browseTitle')),
+            h('p', { className: 'dfm-setting-hint' }, t('browseHint')),
+            h('p', { className: 'dfm-setting-hint' }, t('browsePathLabel'), ': ', h('code', null, browse.path)),
+            h('div', { className: 'dfm-setting-actions' },
+              h('button', { type: 'button', className: 'dfm-action dfm-action--quiet', disabled: browse.loading, onClick: () => loadBrowseDirectory(browse.home) }, t('browseHome')),
+              h('button', {
+                type: 'button', className: 'dfm-action dfm-action--quiet', disabled: browse.loading || !browse.crumbs.length,
+                onClick: () => { const parent = browse.crumbs[browse.crumbs.length - 1]; if (parent) void loadBrowseDirectory(parent.path); },
+              }, t('browseUp'))),
+            browse.loading ? h('p', { className: 'dfm-setting-hint' }, t('browseLoading')) : null,
+            !browse.loading && !browse.entries.length ? h('p', { className: 'dfm-target-empty' }, t('browseEmpty')) : null,
+            h('div', { className: 'dfm-target-list', role: 'group', 'aria-label': t('browseTitle') },
+              browse.entries.filter(entry => !entry.hidden).map(entry => h('button', {
+                key: entry.path, type: 'button', className: 'dfm-browse-entry', disabled: browse.loading,
+                onClick: () => void loadBrowseDirectory(entry.path),
+              }, entry.name))),
+            h('div', { className: 'dfm-setting-actions' },
+              h('input', {
+                className: 'dfm-control', type: 'text', value: browseName, disabled: browse.loading,
+                placeholder: t('browseCreatePlaceholder'),
+                onChange: event => setBrowseName(event.target.value),
+              }),
+              h('button', {
+                type: 'button', className: 'dfm-action dfm-action--quiet',
+                disabled: browse.loading || !browseName.trim() || typeof uiWorkspace?.createDirectory !== 'function',
+                onClick: async () => {
+                  try {
+                    const created = await uiWorkspace.createDirectory(browse.path, browseName.trim());
+                    setBrowseName('');
+                    await loadBrowseDirectory(created);
+                  } catch (createError) {
+                    setBrowseError(createError?.message || t('settingsUnavailable'));
+                  }
+                },
+              }, t('browseCreate'))),
+            browseError ? h('p', { className: 'dfm-settings-message dfm-settings-error', role: 'alert' }, browseError) : null,
+            h('div', { className: 'dfm-setting-actions' },
+              h('button', {
+                type: 'button', className: 'dfm-action dfm-action--quiet',
+                onClick: () => { setBrowseOpen(false); setBrowseError(''); setBrowseName(''); },
+              }, t('cancel')),
+              h('button', {
+                type: 'button', className: 'dfm-action', disabled: browse.loading,
+                onClick: () => {
+                  setPendingDirectory(browse.path);
+                  setPendingMode('');
+                  setPendingTarget('');
+                  setBrowseOpen(false);
+                  setBrowseError('');
+                  setBrowseName('');
+                },
+              }, t('browseConfirm')))) : null,
           pendingDirectory ? h('div', { className: 'dfm-confirm' },
             h('p', null, t('locationConfirmBody')),
             h('p', { className: 'dfm-setting-hint' }, t('selectedTarget'), ': ', h('code', null, targetPath(pendingDirectory))),
