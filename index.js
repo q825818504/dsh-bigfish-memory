@@ -2,7 +2,7 @@ import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { clientRequestSchema } from '@deepseek-ai/dsh-client-connection';
 import { randomUUID } from 'node:crypto';
-import { lstatSync, realpathSync, renameSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, lstatSync, realpathSync, renameSync, statSync, unlinkSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { MemoryStore } from './lib/store.js';
@@ -12,6 +12,7 @@ export const name='dafeiyu-memory';
 const CHANNEL='/api';
 const ENDPOINT='dafeiyu-memory/status';
 const SETTINGS_ENDPOINT='dafeiyu-memory/settings';
+const BROWSE_ENDPOINT='dafeiyu-memory/browse';
 const SETTINGS_ENTRY_ID='include:dafeiyu-memory';
 const PATCH_ID='dafeiyu-memory';
 const SESSION_PAGE_SIZE=100;
@@ -29,6 +30,10 @@ export const Config=z.object({
   preset:z.string().default(''),autoRecall:z.boolean().default(true),
   recallChars:z.number().default(2400),toolChars:z.number().default(6000),
   maintenanceMinutes:z.number().default(30),includeSubagents:z.boolean().default(false),
+  // 强制范围：开启后只记录当前绑定范围的会话，并按范围切分库文件。
+  strictScope:z.boolean().default(false).volatile(),
+  // 强制模式的库文件存放目录（空 = 沿用 database 所在目录）。
+  scopeDirectory:z.string().default('').volatile(),
 });
 // Volatile fields resolve to a stable reference; ordinary fields stay plain values.
 function readConfig(raw,key){
@@ -48,7 +53,8 @@ function expandHome(path){
 }
 export function options(config={}){
   const value={bank:'dafeiyu',bindingMode:'session',bindingWorkspaceId:'',preset:'',autoRecall:true,
-    recallChars:2400,toolChars:6000,maintenanceMinutes:30,includeSubagents:false};
+    recallChars:2400,toolChars:6000,maintenanceMinutes:30,includeSubagents:false,
+    strictScope:false,scopeDirectory:''};
   // `config` may be the resolved runtime Config (volatile references) or plain options (tests, CLI).
   for(const [key,setting] of Object.entries(plainConfig(config)))if(setting!==undefined)value[key]=setting;
   if(!['session','workspace'].includes(value.bindingMode))throw new Error('dafeiyu-memory: invalid bindingMode');
@@ -66,7 +72,38 @@ export function options(config={}){
   const dshHome=expandHome(process.env.DSH_HOME?.trim()||join(homedir(),'.dsh'));
   const configuredDatabase=typeof value.database==='string'?value.database.trim():'';
   value.database=resolve(expandHome(configuredDatabase||join(dshHome,'dafeiyu-memory','memory.sqlite3')));
+  if(typeof value.scopeDirectory!=='string')throw new Error('dafeiyu-memory: invalid scopeDirectory');
   return value;
+}
+/**
+ * 强制模式下每个范围用一个独立库文件，实现物理隔离。
+ *
+ * 命名必须稳定且可预测——切换范围时靠它找回上次的库：
+ *   workspace-<工作区 id 前 8 位>.sqlite3
+ *   session-<会话 id 去前缀后前 8 位>.sqlite3（多选共用一个）
+ *
+ * 目录取 scopeDirectory，未设置则用当前 database 所在目录。
+ * 这样"用户选的保存位置"就是所有范围库的父目录。
+ */
+export function scopeDatabasePath(value){
+  const baseDir=value.scopeDirectory&&isAbsolute(value.scopeDirectory)
+    ?resolve(value.scopeDirectory)
+    :dirname(value.database);
+  if(value.bindingMode==='workspace'){
+    const id=String(value.bindingWorkspaceId||'').replace(/[^A-Za-z0-9_-]/g,'');
+    // 没有有效工作区 → 无法确定库名，返回 null 让调用方拒绝写入
+    if(!id)return null;
+    return join(baseDir,`workspace-${id.slice(0,8)}.sqlite3`);
+  }
+  if(value.bindingMode==='session'){
+    const ids=Array.isArray(value.bindingSessionIds)?value.bindingSessionIds:[];
+    if(!ids.length)return null;
+    // 多选会话共用一个库：用排序后第一个 id 做种子，保证同一组始终同一文件名
+    const seed=[...ids].sort()[0].replace(/^session-/,'').replace(/[^A-Za-z0-9_-]/g,'');
+    if(!seed)return null;
+    return join(baseDir,`session-${seed.slice(0,8)}.sqlite3`);
+  }
+  return null;
 }
 function onceAsync(dispose){
   let pending;
@@ -356,10 +393,249 @@ function workspaceTargets(ctx){
     id:workspace.id,title:workspace.title,sessionCount:workspace.sessionIds.length,
   }));
 }
+/**
+ * 面板浏览用的作用域解析。**不要**复用 adapter 的 sessionScopeIds——那个需要
+ * "当前会话"对象来判断归属，而面板没有当前会话概念。
+ *
+ * 面板的语义是"按用户设定好的绑定范围看记忆"：
+ *   workspace 模式 → 该工作区登记的全部会话（工作区没会话就是空）
+ *   session   模式 → 显式选中的会话列表（没选就是空）
+ *
+ * 关键：任何"解析不出来"的情况都返回 []，让 store 层生成 `AND 0`，
+ * 查不到任何数据。绝不能返回 undefined——那等于查全库，会让不同工作区
+ * 的记忆互相串台。
+ *
+ * `registry.get()` 在会话被删除后可能返回 null（内存态已摘除、磁盘态还在），
+ * 因此失败时回退到 `list()` 里按 id 查找。否则会把"有 4 条记忆的工作区"
+ * 误判成空范围，面板显示 0 而全库显示 4，用户无法理解。
+ *
+ * 任何异常都吞掉并返回 null：registry 抛错时如果向上冒泡，整个面板 RPC 会失败，
+ * 用户看到白屏而不是"暂无记忆"。宁可显示空，也不能让面板不可用。
+ */
+function resolveWorkspace(ctx,workspaceId){
+  if(!workspaceId)return null;
+  const usable=item=>item&&Array.isArray(item.sessionIds)?item:null;
+  try{
+    const direct=usable(ctx.workspaceRegistry?.get?.(workspaceId));
+    if(direct)return direct;
+  }catch(error){
+    console.warn('[dafeiyu-memory] workspaceRegistry.get 失败，尝试 list()',error);
+  }
+  try{
+    const list=ctx.workspaceRegistry?.list?.();
+    if(Array.isArray(list)){
+      return usable(list.find(item=>item&&item.id===workspaceId));
+    }
+  }catch(error){
+    console.warn('[dafeiyu-memory] workspaceRegistry.list 失败，按空范围处理',error);
+  }
+  return null;
+}
+export function panelScopeIds(ctx,value){
+  if(value.bindingMode==='workspace'){
+    const workspace=resolveWorkspace(ctx,value.bindingWorkspaceId);
+    if(!workspace)return [];
+    return workspace.sessionIds.filter(id=>typeof id==='string'&&id);
+  }
+  if(value.bindingMode==='session'){
+    if(!Array.isArray(value.bindingSessionIds))return [];
+    return value.bindingSessionIds.filter(id=>typeof id==='string'&&id);
+  }
+  return [];
+}
+/**
+ * 面板实际查询用的会话集合 = 当前范围 ∪ 库内已有数据的会话。
+ *
+ * 为什么必须取并集：面板的职责是"管理这个库里的记忆"，而**孤儿记忆的定义
+ * 就是"来源会话已不在当前范围"**。如果只用 panelScopeIds 过滤，这些孤儿
+ * 会同时满足"在库里"和"不在范围内"，结果就是既看不见、又删不掉，
+ * 用户会对着"本范围 0 条 / 全库 4 条"无法处理。
+ *
+ * 安全性：并集只放宽到"本库文件里确实存在的会话"，不会跨库、不会跨 bank，
+ * 因为库文件本身已经是按范围切分的物理隔离。
+ *
+ * **只对 workspace 模式取并集**：工作区是"容器"，它的成员会变（会话被删、
+ * 新会话加入），库里的历史成员理应继续可见。而 session 模式是用户**逐条
+ * 点选**的精确清单——如果也取并集，用户取消勾选的会话仍会出现在面板里，
+ * 绑定就形同虚设。session 模式严格只显示勾选的那几个。
+ */
+export function panelQuerySessions(ctx,value,store){
+  const scoped=panelScopeIds(ctx,value);
+  if(value.bindingMode!=='workspace')return scoped;
+  let stored=[];
+  try{
+    stored=(store.sessionInventory({liveSessionIds:scoped}).items??[]).map(item=>item.sessionId);
+  }catch(error){
+    console.warn('[dafeiyu-memory] 读取库内会话清单失败，仅按绑定范围查询',error);
+    return scoped;
+  }
+  return [...new Set([...scoped,...stored])];
+}
+/**
+ * 把旧单库按工作区拆分到各自的库文件。只复制、不删除源数据。
+ *
+ * 返回每个工作区的迁移结果，供面板展示。工作区没有任何消息时也会生成一个空库，
+ * 让用户能看到"这个范围确实是空的"而不是"文件不存在"。
+ */
+export function splitBankIntoScopes(ctx,sourceDatabase,bank,baseDir){
+  const results=[];
+  let source=null;
+  try{
+    source=new MemoryStore(sourceDatabase,bank);
+  }catch(error){
+    return {ok:false,error:`无法打开源库：${error?.message??error}`,results:[]};
+  }
+  try{
+    const workspaces=ctx.workspaceRegistry?.list?.() ?? [];
+    if(!workspaces.length)return {ok:true,results:[],note:'当前没有工作区'};
+    // 记录所有被分配到某个工作区的会话，用来找出"谁都没要"的
+    const assigned=new Set();
+    for(const workspace of workspaces){
+      const ids=(workspace.sessionIds??[]).filter(id=>typeof id==='string'&&id);
+      for(const id of ids)assigned.add(id);
+      // workspace.id 必须存在且可用；缺失时跳过而不是回退到 "undefined" 文件名，
+      // 否则所有工作区会挤进同一个 workspace-undefine.sqlite3。
+      const safeId=String(workspace.id??'').replace(/[^A-Za-z0-9_-]/g,'');
+      if(!safeId){
+        results.push({workspaceId:null,title:workspace.title,error:'工作区缺少 id，已跳过'});
+        continue;
+      }
+      const targetPath=join(baseDir,`workspace-${safeId.slice(0,8)}.sqlite3`);
+      let target=null;
+      try{
+        target=new MemoryStore(targetPath,bank);
+        const {copied,skipped}=source.copySessionsTo(target,ids);
+        results.push({workspaceId:workspace.id,title:workspace.title,path:targetPath,
+          sessions:ids.length,copied,skipped});
+      }catch(error){
+        results.push({workspaceId:workspace.id,title:workspace.title,path:targetPath,
+          error:String(error?.message??error)});
+      }finally{
+        try{target?.close();}catch{}
+      }
+    }
+    // 兜底：不属于任何工作区的会话（历史上产生、后来工作区被删/改）如果留在旧库里，
+    // 强制模式下会变成"面板永远看不到"的隐形数据。统一收进 unassigned 库，
+    // 至少让用户能在面板里找到并处理它们。
+    try{
+      const inventory=source.sessionInventory({liveSessionIds:[...assigned]});
+      const unassigned=[...new Set(inventory.items.filter(item=>item.orphan).map(item=>item.sessionId))];
+      if(unassigned.length){
+        const orphanPath=join(baseDir,'unassigned.sqlite3');
+        let target=null;
+        try{
+          target=new MemoryStore(orphanPath,bank);
+          const {copied,skipped}=source.copySessionsTo(target,unassigned);
+          results.push({workspaceId:null,title:'未归属任何工作区',path:orphanPath,
+            sessions:unassigned.length,copied,skipped,unassigned:true});
+        }finally{
+          try{target?.close();}catch{}
+        }
+      }
+    }catch(error){
+      results.push({workspaceId:null,title:'未归属任何工作区',error:String(error?.message??error)});
+    }
+    return {ok:true,results};
+  }finally{
+    try{source.close();}catch{}
+  }
+}
+/**
+ * 绑定范围变化后，把运行中的库切到新范围，并回灌该范围的历史。
+ *
+ * 为什么必须做：`database` 是 volatile 配置，写入不会重载插件。
+ * 如果只写配置不换库，运行中的实例会继续读写旧库——用户看到
+ * "保存了但没生效，点第二次才成功"，因为第二次恰好触发了别处的刷新。
+ *
+ * 失败语义：切库失败**不回滚配置**（配置已持久化，重启后会一致），
+ * 但要把失败原因返回给面板，让用户知道当前运行的还是旧库。
+ */
+async function applyScopeSwitch(ctx,value,switchDatabase,backfill,result){
+  if(!value.strictScope)return {...result,changed:true,scopeSwitch:null};
+  const target=scopeDatabasePath(value);
+  if(!target){
+    return {...result,changed:true,scopeSwitch:{switched:false,reason:'当前绑定无法确定范围库路径'}};
+  }
+  const outcome=switchDatabase(target);
+  let filled=null;
+  if(outcome.switched){
+    value.database=target;
+    // 新库可能是空的，立刻从 session log 回灌当前范围
+    try{
+      filled=await backfill();
+    }catch(error){
+      filled={error:String(error?.message??error)};
+    }
+  }
+  return {...result,changed:true,
+    databasePath:target,
+    scopeSwitch:{...outcome,backfill:filled},
+    warning:outcome.error?`切换库失败，当前仍使用旧库：${outcome.error}`:undefined};
+}
 export function apply(ctx,config){
   const value=options(config);
   ctx.effect(()=>{
-    const store=new MemoryStore(value.database,value.bank);
+    // 强制模式：库文件按范围切分。解析不出目标路径时退回原来的单库，
+    // 并在下面把写入全部拦掉（strictScope + 空范围 = 不记录），
+    // 绝不因为路径解析失败就默默写进"某个"库。
+    //
+    // store 必须可热切换：切换工作区时如果只写配置不换库，运行中的实例会继续
+    // 读写旧库，用户看到"保存了但没生效，点第二次才成功"。
+    // 用 holder 包一层，所有读写都走 holder.current，切换时原子替换。
+    const holder={current:null};
+    const openStore=database=>{
+      const next=new MemoryStore(database,value.bank);
+      holder.current=next;
+      return next;
+    };
+    const scopedPath=value.strictScope?scopeDatabasePath(value):null;
+    if(value.strictScope&&!scopedPath){
+      console.warn('[dafeiyu-memory] 强制范围已开启但无法确定范围库路径（绑定为空？），本次不记录任何记忆');
+    }
+    const activeDatabase=scopedPath??value.database;
+    openStore(activeDatabase);
+    // adapter 用 activeDatabase 判断是否处于"强制且无库"状态
+    if(scopedPath)value.database=scopedPath;
+    /**
+     * 切换运行中的库。用于绑定范围变化时立即生效，不必等插件重载。
+     *
+     * 失败时保持旧库不动——切换失败最坏的结果是"还用旧库"，
+     * 绝不能出现"旧库关了、新库没开"的悬空状态。
+     *
+     * @returns {{switched:boolean, from:string, to:string, error?:string}}
+     */
+    function switchDatabase(target){
+      const from=holder.current?.path??'';
+      if(!target)return {switched:false,from,to:'',error:'目标库路径为空'};
+      if(from&&samePath(from,target))return {switched:false,from,to:target};
+      let next=null;
+      try{
+        next=new MemoryStore(target,value.bank);
+      }catch(error){
+        return {switched:false,from,to:target,error:String(error?.message??error)};
+      }
+      const previous=holder.current;
+      holder.current=next;
+      try{previous?.close();}catch{}
+      return {switched:true,from,to:target};
+    }
+    // 门面：把所有调用转发给当前 holder.current。方法绑定到真实实例，
+    // 保证 this 正确；属性（如 .db/.path）也走 getter。
+    // 用 Proxy 而不是手写转发，是为了让新增的 store 方法自动可用。
+    const store=new Proxy({},{
+      get(_target,key){
+        const current=holder.current;
+        if(!current)throw new Error('Memory store is not open');
+        const value=current[key];
+        return typeof value==='function'?value.bind(current):value;
+      },
+      set(_target,key,next){
+        const current=holder.current;
+        if(!current)throw new Error('Memory store is not open');
+        current[key]=next;
+        return true;
+      },
+    });
     let controller;
     let migrationTask=null;
     let migrationStatus=value.pendingMigrationFrom?{state:'checking'}:null;
@@ -411,7 +687,108 @@ export function apply(ctx,config){
     }
     try{
       controller=attach(ctx,store,value,defineTool);
-      routeDisposers.push(registerRpcRoute(ctx,ENDPOINT,()=>store.storageStats(),'storage_stats_failed'));
+      // 强制模式下的自动回灌：新库是空的，必须把该范围的历史对话从 DSH
+      // 持久化 session log 拉进来，否则用户切换范围后会看到"记忆全没了"。
+      // 回灌本身受 adapter 的 inScope 门禁约束，只会拉当前范围内的会话。
+      // 失败不阻断插件启动——记忆是增强项，不能拖垮对话。
+      let scopeBackfill=null;
+      if(value.strictScope&&scopedPath){
+        scopeBackfill=controller.backfill()
+          .then(result=>{
+            console.info(`[dafeiyu-memory] 强制范围回灌完成：${result.sessions} 个会话 → ${scopedPath}`);
+            return {state:'ready',...result,path:scopedPath};
+          })
+          .catch(error=>{
+            console.error('[dafeiyu-memory] 强制范围回灌失败',error);
+            return {state:'failed',error:String(error?.message??error),path:scopedPath};
+          });
+      }
+      // 统计也按绑定范围走。面板是"管理我关心的记忆"，不是全库后台，
+      // 顶部数字必须和下面的细胞数对得上，否则用户无法判断自己看到的是哪一部分。
+      // 物理文件大小无法按会话切分，由 store 单独用 bankTotals 提供全库对照。
+      routeDisposers.push(registerRpcRoute(ctx,ENDPOINT,
+        ()=>store.storageStats({sessionIds:panelQuerySessions(ctx,value,store)}),'storage_stats_failed'));
+      // 记忆细胞视图的数据源。只读分页，预览截断，不返回全文。
+      // 作用域由 panelScopeIds 解析：解析不出来就是空数组 → store 生成 `AND 0`
+      // → 查不到任何数据。绝不传 undefined（那会退化成查全库、跨工作区串台）。
+      routeDisposers.push(registerRpcRoute(ctx,BROWSE_ENDPOINT,async payload=>{
+        if(!payload||typeof payload!=='object'||Array.isArray(payload))throw new Error('Invalid browse request');
+        const sessionIds=panelQuerySessions(ctx,value,store);
+        const action=payload.action??'page';
+        if(action==='detail'){
+          const id=Number(payload.id);
+          if(!Number.isSafeInteger(id)||id<1)throw new Error('Invalid memory id');
+          // browse 返回的是 message.id，必须用 readMessage 而不是 read（后者收 chunk.id）。
+          // 同样要带 sessionIds，否则可以按 id 越界读到别的工作区。
+          return store.readMessage(id,{length:6000,sessionIds});
+        }
+        // 会话清单：标出哪些记忆的来源会话已经从工作区移除（孤儿）。
+        // 判定基准是"当前仍有效的会话"，由 workspaceRegistry 提供，
+        // 与 panelScopeIds 同源，保证面板展示与范围过滤口径一致。
+        if(action==='sessions'){
+          // "有效会话"的判定基准是 **DSH 当前真实存在的会话**，不是工作区登记表。
+          // 用户删掉会话后，workspace.json 里的 sessionIds 往往还留着残留项，
+          // 若以登记表为准，这些会话产生的记忆永远会被判为"有效"，孤儿检测失效。
+          const registered=value.bindingMode==='workspace'
+            ?panelScopeIds(ctx,value)
+            :(Array.isArray(value.bindingSessionIds)?value.bindingSessionIds:[]);
+          const alive=new Set();
+          try{
+            const records=await ctx.sessionQuery?.listSessions?.();
+            if(Array.isArray(records)){
+              for(const record of records){
+                const id=record?.header?.id;
+                if(typeof id==='string'&&id)alive.add(id);
+              }
+            }
+          }catch(error){
+            // 读不到会话列表时退回"登记表"口径，宁可少报孤儿也不要误删
+            console.warn('[dafeiyu-memory] 无法读取会话列表，孤儿判定退回工作区登记口径',error);
+            return store.sessionInventory({liveSessionIds:registered});
+          }
+          return store.sessionInventory({liveSessionIds:[...alive]});
+        }
+        // 删除某个（已失效的）会话留下的全部记忆。
+        // 破坏性操作：必须显式 confirm，且**只允许删 DSH 中已不存在的会话**。
+        // 判定基准与 sessions 动作保持一致——用 sessionQuery.listSessions()，
+        // 而不是工作区登记表（登记表在删会话后会残留）。
+        if(action==='delete-session'){
+          const target=typeof payload.sessionId==='string'?payload.sessionId.trim():'';
+          if(!target)throw new Error('sessionId is required');
+          if(payload.confirm!==true)throw new Error('删除记忆需要显式确认（confirm: true）');
+          let alive=null;
+          try{
+            const records=await ctx.sessionQuery?.listSessions?.();
+            if(Array.isArray(records)){
+              alive=new Set();
+              for(const record of records){
+                const id=record?.header?.id;
+                if(typeof id==='string'&&id)alive.add(id);
+              }
+            }
+          }catch(error){
+            throw new Error(`无法确认会话状态，已拒绝删除：${error?.message??error}`);
+          }
+          if(!alive)throw new Error('无法确认会话状态，已拒绝删除');
+          if(alive.has(target)){
+            throw new Error('该会话仍然存在，拒绝删除它的记忆。');
+          }
+          const result=store.deleteSessions([target]);
+          console.info(`[dafeiyu-memory] 已删除会话 ${target} 的记忆：${result.messages} 条消息 / ${result.chunks} 个片段`);
+          return {...result,sessionId:target};
+        }
+        if(action!=='page')throw new Error('Unsupported browse action');
+        const offset=payload.offset??0;
+        if(!Number.isSafeInteger(offset)||offset<0)throw new Error('Invalid offset');
+        return store.browse({
+          offset,limit:payload.limit??40,preview:payload.preview??110,
+          query:typeof payload.query==='string'&&payload.query.trim()?payload.query.trim():null,
+          role:payload.role==='user'||payload.role==='assistant'?payload.role:null,
+          since:Number.isFinite(payload.since)?payload.since:null,
+          before:Number.isFinite(payload.before)?payload.before:null,
+          sessionIds,
+        });
+      },'memory_browse_failed'));
       routeDisposers.push(registerRpcRoute(ctx,SETTINGS_ENDPOINT,async payload=>{
         if(!payload||typeof payload!=='object'||Array.isArray(payload))throw new Error('Invalid settings request');
         if(payload.action==='read'){
@@ -421,6 +798,10 @@ export function apply(ctx,config){
             bindingSessionIds:value.bindingSessionIds??null,bindingWorkspaceId:value.bindingWorkspaceId||null,
             sessionPage:sessions,workspaces:workspaceTargets(ctx),
             revision:settingsEntry(ctx).revision,
+            strictScope:value.strictScope,
+            scopeDirectory:value.scopeDirectory||null,
+            scopePath:value.strictScope?scopeDatabasePath(value):null,
+            scopeBackfill:scopeBackfill?await scopeBackfill:null,
             migration:value.pendingMigrationFrom?{
               id:value.pendingMigrationId||null,sourcePath:value.pendingMigrationFrom,targetPath:value.pendingMigrationTarget||null,
               state:migrationStatus?.state||'checking',error:migrationStatus?.error||null,
@@ -431,18 +812,41 @@ export function apply(ctx,config){
         if(payload.action==='list-sessions'){
           return sessionTargetPage(ctx,payload.offset??0,value.bindingSessionIds??[]);
         }
+        if(payload.action==='split-bank'){
+          // 一次性迁移：把旧单库按工作区拆到各自文件。只复制不删除。
+          if(typeof payload.sourceDatabase!=='string'||!isAbsolute(payload.sourceDatabase))throw new Error('Source database must be an absolute path');
+          const source=resolve(payload.sourceDatabase);
+          if(!existsSync(source))throw new Error(`Source database not found: ${source}`);
+          const baseDir=value.scopeDirectory&&isAbsolute(value.scopeDirectory)
+            ?resolve(value.scopeDirectory):dirname(value.database);
+          return splitBankIntoScopes(ctx,source,value.bank,baseDir);
+        }
+        if(payload.action==='set-strict-scope'){
+          if(typeof payload.enabled!=='boolean')throw new Error('enabled must be a boolean');
+          const patch={strictScope:payload.enabled};
+          if(typeof payload.scopeDirectory==='string'){
+            if(payload.scopeDirectory&&!isAbsolute(payload.scopeDirectory))throw new Error('Scope directory must be absolute');
+            patch.scopeDirectory=payload.scopeDirectory;
+          }
+          await updateConfig(ctx,patch);
+          value.strictScope=patch.strictScope;
+          if(patch.scopeDirectory!==undefined)value.scopeDirectory=patch.scopeDirectory;
+          return {strictScope:value.strictScope,scopeDirectory:value.scopeDirectory||null,
+            scopePath:value.strictScope?scopeDatabasePath(value):null,changed:true};
+        }
         if(payload.action==='set-binding-mode'){
           if(!['session','workspace'].includes(payload.bindingMode))throw new Error('Binding mode must be session or workspace');
           if(payload.bindingMode===value.bindingMode)return {bindingMode:value.bindingMode,changed:false};
           await updateConfig(ctx,{bindingMode:payload.bindingMode});
           value.bindingMode=payload.bindingMode;
-          return {bindingMode:payload.bindingMode,changed:true};
+          // 模式切换会改变范围库路径，必须同时热切换，否则要等重载才生效
+          return applyScopeSwitch(ctx,value,switchDatabase,()=>controller.backfill(),{bindingMode:value.bindingMode});
         }
         if(payload.action==='set-session-targets'){
           if(payload.sessionIds===null){
             await unsetConfig(ctx,['bindingSessionIds']);
             delete value.bindingSessionIds;
-            return {bindingSessionIds:null,changed:true};
+            return applyScopeSwitch(ctx,value,switchDatabase,()=>controller.backfill(),{bindingSessionIds:null});
           }
           if(!Array.isArray(payload.sessionIds)||payload.sessionIds.some(id=>typeof id!=='string'||!id))throw new Error('Session targets must be a list of session ids');
           const sessionIds=[...new Set(payload.sessionIds)];
@@ -451,14 +855,34 @@ export function apply(ctx,config){
           if(sessionIds.some(id=>!known.has(id)&&!previouslySelected.has(id)))throw new Error('One or more selected sessions are no longer available; refresh the list and try again');
           await updateConfig(ctx,{bindingSessionIds:sessionIds});
           value.bindingSessionIds=sessionIds;
-          return {bindingSessionIds:sessionIds,changed:true};
+          return applyScopeSwitch(ctx,value,switchDatabase,()=>controller.backfill(),{bindingSessionIds:sessionIds});
         }
         if(payload.action==='set-workspace-target'){
           if(typeof payload.workspaceId!=='string')throw new Error('Workspace target must be an id or empty');
-          if(payload.workspaceId&&!ctx.workspaceRegistry.get(payload.workspaceId))throw new Error('The selected workspace is no longer available; refresh the list and try again');
+          if(payload.workspaceId&&!resolveWorkspace(ctx,payload.workspaceId))throw new Error('The selected workspace is no longer available; refresh the list and try again');
           await updateConfig(ctx,{bindingWorkspaceId:payload.workspaceId});
           value.bindingWorkspaceId=payload.workspaceId;
-          return {bindingWorkspaceId:payload.workspaceId,changed:true};
+          return applyScopeSwitch(ctx,value,switchDatabase,()=>controller.backfill(),{bindingWorkspaceId:payload.workspaceId});
+        }
+        // 查询某个范围已有的记忆库，供"是否读取以往目录"提示使用
+        if(payload.action==='inspect-scope'){
+          const probe={...value,
+            bindingMode:typeof payload.bindingMode==='string'?payload.bindingMode:value.bindingMode,
+            bindingWorkspaceId:typeof payload.workspaceId==='string'?payload.workspaceId:value.bindingWorkspaceId,
+            bindingSessionIds:Array.isArray(payload.sessionIds)?payload.sessionIds:value.bindingSessionIds};
+          const target=scopeDatabasePath(probe);
+          if(!target)return {path:null,exists:false,messages:0};
+          const exists=existsSync(target);
+          let messages=0;
+          if(exists){
+            try{
+              const probeStore=new MemoryStore(target,value.bank);
+              try{messages=probeStore.storageStats().messages;}finally{probeStore.close();}
+            }catch(error){
+              console.warn('[dafeiyu-memory] 探测范围库失败',error);
+            }
+          }
+          return {path:target,exists,messages};
         }
         if(payload.action==='change-database-directory'){
           if(typeof payload.directory!=='string'||!payload.directory.trim()||!isAbsolute(payload.directory))throw new Error('Choose an absolute directory path');

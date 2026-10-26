@@ -110,6 +110,48 @@ window.__ModuleLoader__.load({
         hintWarm: '强度 10%–50%',
         hintCold: '强度 < 10%',
         logicalNote: '分类与热度的大小是逻辑正文体积，并非磁盘页分配。数据库总量包含主库、WAL 和 SHM；原文文本按消息表中的 UTF-8 正文计算。',
+        scopeProbeTitle: '这个范围已有记忆库',
+        scopeProbeBody: '检测到该范围已经保存过记忆，直接切换会继续使用这个库：',
+        scopeProbeCount: '条记忆',
+        scopeProbeUse: '读取已有记忆',
+        scopeProbeChooseOther: '换一个保存目录',
+        scopeProbeCancel: '取消',
+        scopeSwitchedTo: '已切换到',        orphanTitle: '来源会话已删除的记忆',
+        orphanUnit: '条记忆仍保留',
+        orphanNote: '这些记忆的来源会话已从工作区移除。记忆本身仍然可用，你也可以在这里清理掉不再需要的内容——删除后无法恢复。',
+        orphanShow: '展开查看',
+        orphanHide: '收起',
+        orphanMsgUnit: '条',
+        orphanDelete: '删除这些记忆',
+        orphanConfirm: '确认删除？不可恢复',
+        orphanDeleteYes: '确认删除',
+        orphanDeleteNo: '取消',
+        orphanDeleting: '删除中…',        strictScopeLabel: '强制范围模式',
+        strictScopeHint: '开启后只记录当前绑定范围内的会话，每个范围使用独立的库文件。范围外的对话不会写入任何记忆。',
+        strictScopePath: '当前范围库',
+        strictScopeNoPath: '（未确定：请先选择会话或工作区）',
+        strictScopeOn: '已开启 · 点击关闭',
+        strictScopeOff: '开启强制范围',
+        strictScopeSplit: '把旧库拆分到各工作区',
+        strictScopeBackfilling: '正在回灌该范围的历史对话…',
+        strictScopeBackfilled: '已回灌会话数',
+        strictScopeBackfillFailed: '回灌失败',        scopeOfBank: '全库',
+        dbSharedNote: '整库共用一个文件，无法按范围切分',
+        cellsTitle: '记忆细胞',
+        cellsSub: '每一颗细胞是一段真实对话。颜色由内容决定，越长的记忆越大；点开看原文。只显示当前绑定范围内的记忆。',
+        cellsUnit: '颗记忆',
+        cellsSearch: '寻找',
+        cellsSearchHint: '搜索关键词，比如某个名字、地点或事情',
+        cellsFilterLabel: '按说话人筛选',
+        cellsAll: '全部',
+        cellsUser: '你说的',
+        cellsAssistant: '大肥鱼说的',
+        cellsLoading: '正在唤醒记忆…',
+        cellsFailed: '没能读到记忆。稍后再试，或刷新页面。',
+        cellsEmpty: '这里还没有匹配的记忆。换个词试试？',
+        cellsMore: '再捞一些上来',
+        cellsDetail: '记忆原文',
+        cellsClose: '关闭',
         emptyTitle: '这本记忆库还没有对话文本',
         emptyBody: '开始一次 DSH 对话后，插件会按照现有保存设置记录支持的消息。',
         lastCapture: '最近保存',
@@ -217,6 +259,48 @@ window.__ModuleLoader__.load({
         hintWarm: 'Strength 10%–50%',
         hintCold: 'Strength < 10%',
         logicalNote: 'Category and recency sizes are logical text totals, not SQLite page allocations. The physical total includes the main database, WAL, and SHM files; original text counts UTF-8 message-body bytes.',
+        scopeProbeTitle: 'This scope already has a memory library',
+        scopeProbeBody: 'Memories were already saved for this scope. Switching will keep using this library:',
+        scopeProbeCount: 'memories',
+        scopeProbeUse: 'Use the existing memories',
+        scopeProbeChooseOther: 'Choose another directory',
+        scopeProbeCancel: 'Cancel',
+        scopeSwitchedTo: 'switched to',        orphanTitle: 'Memories whose source session was deleted',
+        orphanUnit: 'memories kept',
+        orphanNote: 'The sessions that produced these memories are no longer in the workspace. The memories still work, and you can clear the ones you no longer need here — deletion cannot be undone.',
+        orphanShow: 'Show',
+        orphanHide: 'Hide',
+        orphanMsgUnit: 'msgs',
+        orphanDelete: 'Delete these memories',
+        orphanConfirm: 'Delete permanently?',
+        orphanDeleteYes: 'Delete',
+        orphanDeleteNo: 'Cancel',
+        orphanDeleting: 'Deleting…',        strictScopeLabel: 'Strict scope mode',
+        strictScopeHint: 'Only sessions inside the current binding are recorded, and each scope gets its own database file. Conversations outside the scope are never written.',
+        strictScopePath: 'Scope database',
+        strictScopeNoPath: '(unresolved — pick a session or workspace first)',
+        strictScopeOn: 'On · click to disable',
+        strictScopeOff: 'Enable strict scope',
+        strictScopeSplit: 'Split the old database per workspace',
+        strictScopeBackfilling: 'Backfilling this scope from session logs…',
+        strictScopeBackfilled: 'Sessions backfilled',
+        strictScopeBackfillFailed: 'Backfill failed',        scopeOfBank: 'of',
+        dbSharedNote: 'One file shared by every scope — it cannot be split per session',
+        cellsTitle: 'Memory cells',
+        cellsSub: 'Each cell is one real exchange. Colour comes from the content, longer memories grow bigger — open one to read it. Only the current binding scope is shown.',
+        cellsUnit: 'memories',
+        cellsSearch: 'Find',
+        cellsSearchHint: 'Search a name, place, or moment',
+        cellsFilterLabel: 'Filter by speaker',
+        cellsAll: 'All',
+        cellsUser: 'You said',
+        cellsAssistant: 'Big Fish said',
+        cellsLoading: 'Waking memories…',
+        cellsFailed: 'Could not read memories. Try again or refresh the page.',
+        cellsEmpty: 'No matching memory yet. Try another word?',
+        cellsMore: 'Dredge up more',
+        cellsDetail: 'Memory text',
+        cellsClose: 'Close',
         emptyTitle: 'No conversation text is stored yet',
         emptyBody: 'After a DSH conversation, the plugin records supported messages according to its current capture settings.',
         lastCapture: 'Last capture',
@@ -338,6 +422,7 @@ window.__ModuleLoader__.load({
       .dfm-metric dd { margin: 4px 0 0; font-size: 17px; font-weight: 620; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
       .dfm-metric--total dd { font-size: 20px; }
       .dfm-metric small { display: block; margin-top: 5px; color: var(--dfm-muted); font-size: 11px; line-height: 1.55; font-weight: 400; }
+      .dfm-metric .dfm-metric-scope { margin-top: 3px; color: var(--dfm-muted); font-size: 10.5px; opacity: .82; }
       .dfm-section { margin-top: 30px; }
       .dfm-section-head { margin-bottom: 10px; }
       .dfm-section-title { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 620; }
@@ -386,6 +471,209 @@ window.__ModuleLoader__.load({
       }
       @media (prefers-reduced-motion: reduce) {
         .dfm-refresh, .dfm-choice, .dfm-settings .dfm-action { transition: none; }
+      }
+
+      /* ── 记忆细胞 ─────────────────────────────────────────────────────
+         多巴胺配色的核心：每个细胞用 HSL 按自身色相发光，饱和度高、明度分层。
+         深色底用较高明度，浅色底自动降低饱和度，保证两种主题下都可读。 */
+      .dfm-cells { margin-top: 34px; }
+      .dfm-cells-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+      .dfm-cells-sub { margin: 6px 0 0; color: var(--dfm-muted); font-size: 12px; max-width: 52ch; }
+      .dfm-cells-count { display: flex; align-items: baseline; gap: 5px; }
+      .dfm-cells-count strong {
+        font-size: 30px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+        background: linear-gradient(120deg, hsl(340 90% 62%), hsl(258 88% 66%) 45%, hsl(172 78% 48%));
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      }
+      .dfm-cells-count span { color: var(--dfm-muted); font-size: 12px; }
+
+      /* ── 孤儿记忆（来源会话已删除）───────────────────────────────────── */
+      .dfm-orphans {
+        margin-top: 16px; padding: 12px 14px; border-radius: 12px;
+        border: 1px solid hsl(38 92% 58% / .38);
+        background: hsl(38 92% 58% / .07);
+      }
+      .dfm-orphans-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+      .dfm-orphans-head strong { font-size: 12.5px; font-weight: 640; }
+      .dfm-orphans-head span { color: var(--dfm-muted); font-size: 11.5px; }
+      .dfm-orphans-toggle {
+        margin-left: auto; padding: 4px 10px; border-radius: 7px; cursor: pointer;
+        border: 1px solid var(--dfm-border-strong); background: var(--dfm-surface);
+        color: var(--dfm-text); font: inherit; font-size: 11.5px;
+      }
+      .dfm-orphans-toggle:hover { border-color: hsl(38 92% 58%); }
+      .dfm-orphans-note { margin: 7px 0 0; color: var(--dfm-muted); font-size: 11px; line-height: 1.6; }
+      .dfm-orphans-list { margin-top: 10px; display: grid; gap: 7px; }
+      .dfm-orphans-row {
+        display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+        padding: 8px 10px; border-radius: 9px; background: var(--dfm-surface);
+        border: 1px solid var(--dfm-border);
+      }
+      .dfm-orphans-id { flex: 1 1 200px; min-width: 0; font-size: 11px; overflow-wrap: anywhere; opacity: .85; }
+      .dfm-orphans-meta { color: var(--dfm-muted); font-size: 11px; white-space: nowrap; }
+      .dfm-orphans-delete, .dfm-orphans-danger, .dfm-orphans-cancel {
+        padding: 4px 10px; border-radius: 7px; cursor: pointer; font: inherit; font-size: 11.5px; font-weight: 560;
+        border: 1px solid var(--dfm-border-strong); background: transparent; color: var(--dfm-text);
+      }
+      .dfm-orphans-delete:hover { border-color: hsl(0 78% 58%); color: hsl(0 78% 58%); }
+      .dfm-orphans-confirm { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+      .dfm-orphans-confirm > span { color: hsl(0 72% 55%); font-size: 11.5px; }
+      .dfm-orphans-danger { border-color: hsl(0 78% 58%); background: hsl(0 78% 58%); color: #fff; }
+      .dfm-orphans-danger:hover:not(:disabled) { filter: brightness(1.08); }
+      .dfm-orphans-danger:disabled, .dfm-orphans-cancel:disabled { opacity: .55; cursor: wait; }
+      .dfm-orphans-error { margin: 8px 0 0; color: var(--dsw-alias-state-error-primary); font-size: 11.5px; }
+      .dfm-cells-search { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+      .dfm-cells-search input {
+        flex: 1 1 200px; min-width: 0; height: 36px; padding: 0 12px;
+        border: 1px solid var(--dfm-border-strong); border-radius: 10px;
+        background: var(--dfm-surface); color: var(--dfm-text); font: inherit; font-size: 13px;
+      }
+      .dfm-cells-search input:focus-visible { outline: 2px solid hsl(258 88% 66%); outline-offset: 2px; border-color: transparent; }
+      .dfm-cells-filters { display: flex; gap: 6px; }
+      .dfm-cells-chip {
+        height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+        border: 1px solid var(--dfm-border-strong); background: transparent;
+        color: var(--dfm-muted); font: inherit; font-size: 12px; font-weight: 560;
+        transition: color 140ms ease-out, border-color 140ms ease-out, background-color 140ms ease-out;
+      }
+      .dfm-cells-chip:hover { color: var(--dfm-text); border-color: hsl(258 88% 66%); }
+      .dfm-cells-chip--on {
+        color: #fff; border-color: transparent;
+        background: linear-gradient(120deg, hsl(340 90% 62%), hsl(258 88% 66%));
+      }
+      .dfm-cells-submit {
+        height: 36px; padding: 0 16px; border-radius: 10px; cursor: pointer; border: 0;
+        color: #fff; font: inherit; font-size: 13px; font-weight: 600;
+        background: linear-gradient(120deg, hsl(340 90% 62%), hsl(258 88% 66%));
+        transition: filter 140ms ease-out, transform 140ms ease-out;
+      }
+      .dfm-cells-submit:hover { filter: brightness(1.08); }
+      .dfm-cells-submit:active { transform: scale(.98); }
+
+      .dfm-cells-state {
+        display: flex; align-items: center; gap: 9px; justify-content: center;
+        margin-top: 22px; padding: 34px 18px; border-radius: 16px;
+        border: 1px dashed var(--dfm-border-strong); color: var(--dfm-muted); font-size: 13px;
+      }
+      .dfm-cells-state--error { color: var(--dsw-alias-state-error-primary); border-style: solid; }
+      .dfm-cells-spinner {
+        width: 14px; height: 14px; border-radius: 50%;
+        border: 2px solid hsl(258 88% 66% / .28); border-top-color: hsl(258 88% 66%);
+        animation: dfm-spin .8s linear infinite;
+      }
+      @keyframes dfm-spin { to { transform: rotate(360deg); } }
+
+      .dfm-cells-field {
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+        gap: 10px; margin-top: 22px; padding: 26px 10px;
+        border-radius: 22px;
+        background:
+          radial-gradient(circle at 22% 28%, hsl(340 90% 62% / .07), transparent 42%),
+          radial-gradient(circle at 78% 72%, hsl(196 92% 58% / .07), transparent 44%),
+          var(--dfm-surface);
+      }
+      .dfm-cell {
+        position: relative; flex: 0 0 auto;
+        width: var(--cell-size); height: var(--cell-size);
+        padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+        background: transparent; color: inherit; font: inherit;
+        transform: translate(calc((var(--cell-x) - .5) * 10px), calc((var(--cell-y) - .5) * 10px));
+        transition: transform 220ms cubic-bezier(.2,.8,.3,1);
+      }
+      .dfm-cell-glow {
+        position: absolute; inset: 0; border-radius: 50%;
+        background: radial-gradient(circle at 32% 28%,
+          hsl(var(--cell-hue) 96% 72% / .95),
+          hsl(var(--cell-hue) 92% 60% / .82) 46%,
+          hsl(var(--cell-hue) 88% 48% / .62) 74%,
+          hsl(var(--cell-hue) 84% 40% / .48));
+        box-shadow:
+          0 0 0 1px hsl(var(--cell-hue) 92% 70% / .28) inset,
+          0 6px 18px -6px hsl(var(--cell-hue) 90% 52% / .55),
+          0 0 26px -8px hsl(var(--cell-hue) 92% 62% / .42);
+        animation: dfm-float 9s ease-in-out infinite;
+      }
+      .dfm-cell-body {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 2px;
+        padding: 14%; text-align: center; overflow: hidden;
+      }
+      .dfm-cell-text {
+        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+        overflow: hidden; width: 100%;
+        font-size: 9.5px; line-height: 1.32; font-weight: 540;
+        color: #fff; text-shadow: 0 1px 2px hsl(var(--cell-hue) 70% 22% / .55);
+        overflow-wrap: anywhere;
+      }
+      .dfm-cell-meta {
+        display: flex; align-items: center; gap: 4px;
+        font-size: 8px; font-weight: 600; letter-spacing: .01em;
+        color: hsl(var(--cell-hue) 40% 98% / .82); white-space: nowrap;
+      }
+      .dfm-cell-dot { width: 2px; height: 2px; border-radius: 50%; background: currentColor; opacity: .6; }
+      .dfm-cell--user .dfm-cell-glow {
+        box-shadow:
+          0 0 0 1.5px hsl(var(--cell-hue) 96% 80% / .55) inset,
+          0 6px 20px -6px hsl(var(--cell-hue) 90% 52% / .62),
+          0 0 30px -8px hsl(var(--cell-hue) 92% 64% / .5);
+      }
+      .dfm-cell:hover, .dfm-cell:focus-visible {
+        transform: translate(calc((var(--cell-x) - .5) * 10px), calc((var(--cell-y) - .5) * 10px - 4px)) scale(1.07);
+        z-index: 2;
+      }
+      .dfm-cell:focus-visible { outline: 2px solid hsl(var(--cell-hue) 96% 78%); outline-offset: 3px; }
+      @keyframes dfm-float {
+        0%, 100% { transform: translateY(0) scale(1); }
+        50% { transform: translateY(-6px) scale(1.025); }
+      }
+      .dfm-cells-more {
+        flex: 0 0 100%; margin: 6px auto 0; padding: 9px 20px; cursor: pointer;
+        border-radius: 999px; border: 1px solid var(--dfm-border-strong);
+        background: var(--dfm-surface); color: var(--dfm-text);
+        font: inherit; font-size: 12px; font-weight: 560;
+      }
+      .dfm-cells-more:hover { border-color: hsl(258 88% 66%); }
+
+      .dfm-cells-modal {
+        position: fixed; inset: 0; z-index: 60; display: flex;
+        align-items: center; justify-content: center; padding: 24px;
+        background: hsl(240 30% 8% / .55); backdrop-filter: blur(3px);
+        animation: dfm-fade 160ms ease-out;
+      }
+      @keyframes dfm-fade { from { opacity: 0; } to { opacity: 1; } }
+      .dfm-cells-modal-card {
+        width: min(100%, 620px); max-height: 76vh; display: flex; flex-direction: column;
+        border-radius: 18px; overflow: hidden;
+        background: var(--dfm-bg); border: 1px solid var(--dfm-border-strong);
+        box-shadow: 0 24px 60px -18px hsl(240 40% 6% / .6);
+      }
+      .dfm-cells-modal-head {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 16px; border-bottom: 1px solid var(--dfm-border);
+      }
+      .dfm-cells-modal-tag {
+        padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 620; color: #fff;
+        background: linear-gradient(120deg, hsl(340 90% 62%), hsl(258 88% 66%));
+      }
+      .dfm-cells-modal-time { flex: 1; color: var(--dfm-muted); font-size: 11.5px; }
+      .dfm-cells-modal-close {
+        width: 26px; height: 26px; border: 0; border-radius: 8px; cursor: pointer;
+        background: transparent; color: var(--dfm-muted); font-size: 19px; line-height: 1;
+      }
+      .dfm-cells-modal-close:hover { background: var(--dfm-row-hover); color: var(--dfm-text); }
+      .dfm-cells-modal-body { padding: 16px; overflow-y: auto; }
+      .dfm-cells-modal-body p {
+        margin: 0; font-size: 13.5px; line-height: 1.68; white-space: pre-wrap; overflow-wrap: anywhere;
+      }
+      .dfm-cells-modal-loading { color: var(--dfm-muted); }
+
+      /* 浅色主题下降低饱和度，避免刺眼 */
+      @media (prefers-color-scheme: light) {
+        .dfm-cell-glow { filter: saturate(.88) brightness(1.02); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .dfm-cell-glow { animation: none; }
+        .dfm-cell, .dfm-cells-modal { transition: none; animation: none; }
       }
     `;
 
@@ -470,6 +758,265 @@ window.__ModuleLoader__.load({
       const rpc = ctx.connection.rpc;
       const uiWorkspace = ctx.uiWorkspace;
 
+      // ── 记忆细胞 ────────────────────────────────────────────────────────
+      // 多巴胺配色：每条记忆按自身 id 哈希取一个色相，同一条记忆永远同色，
+      // 于是"颜色"本身成了一条稳定的视觉身份线索。
+      // 大小映射正文长度，位置用 id 做确定性错落，避免每次渲染跳动。
+      const CELL_HUES = [340, 12, 32, 48, 96, 152, 172, 196, 220, 258, 288, 316];
+      function cellTone(seed) {
+        let hash = 2166136261;
+        const text = String(seed);
+        for (let i = 0; i < text.length; i++) {
+          hash ^= text.charCodeAt(i);
+          hash = Math.imul(hash, 16777619);
+        }
+        const hue = CELL_HUES[Math.abs(hash) % CELL_HUES.length];
+        const drift = (Math.abs(hash >> 8) % 14) - 7;
+        return { hue: (hue + drift + 360) % 360, delay: (Math.abs(hash >> 16) % 420) / 100 };
+      }
+      function cellSize(chars) {
+        if (chars <= 20) return 58;
+        if (chars <= 60) return 70;
+        if (chars <= 150) return 84;
+        if (chars <= 400) return 100;
+        if (chars <= 1000) return 116;
+        return 132;
+      }
+      function relativeTime(time, localeId) {
+        if (!time) return '';
+        const zh = localeId === 'zh';
+        const diff = Date.now() - time;
+        if (diff < 60000) return zh ? '刚刚' : 'just now';
+        const mins = Math.floor(diff / 60000);
+        if (mins < 60) return zh ? `${mins} 分钟前` : `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return zh ? `${hours} 小时前` : `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 30) return zh ? `${days} 天前` : `${days}d ago`;
+        return new Date(time).toLocaleDateString(zh ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' });
+      }
+
+      function MemoryCells({ localeId }) {
+        const [cells, setCells] = React.useState([]);
+        const [total, setTotal] = React.useState(0);
+        const [nextOffset, setNextOffset] = React.useState(null);
+        const [query, setQuery] = React.useState('');
+        const [committed, setCommitted] = React.useState('');
+        const [role, setRole] = React.useState('');
+        const [loading, setLoading] = React.useState(true);
+        const [failed, setFailed] = React.useState(false);
+        const [active, setActive] = React.useState(null);
+        const [detail, setDetail] = React.useState(null);
+        const [inventory, setInventory] = React.useState(null);
+        const [orphanOpen, setOrphanOpen] = React.useState(false);
+        const [pendingDelete, setPendingDelete] = React.useState('');
+        const [deleteBusy, setDeleteBusy] = React.useState(false);
+        const [deleteError, setDeleteError] = React.useState('');
+        const [reloadToken, setReloadToken] = React.useState(0);
+
+        // 会话清单：用来发现"来源会话已被删除"的孤儿记忆。
+        // 单独请求而不是塞进 page 响应，是因为它覆盖全库、与分页无关。
+        React.useEffect(() => {
+          const controller = new AbortController();
+          rpc.call(CHANNEL, 'dafeiyu-memory/browse', { action: 'sessions' }, controller.signal)
+            .then(result => {
+              if (!result || result.ok !== true) throw new Error('sessions failed');
+              setInventory(result.value);
+            })
+            .catch(() => setInventory(null));
+          return () => controller.abort();
+        }, [reloadToken]);
+
+        React.useEffect(() => {
+          const controller = new AbortController();
+          setLoading(true);
+          rpc.call(CHANNEL, 'dafeiyu-memory/browse', {
+            action: 'page', offset: 0, limit: 40, preview: 110,
+            query: committed || null, role: role || null,
+          }, controller.signal).then(result => {
+            if (!result || result.ok !== true) throw new Error(result?.error?.message || 'browse failed');
+            setCells(result.value.items);
+            setTotal(result.value.total);
+            setNextOffset(result.value.nextOffset);
+            setLoading(false);
+            setFailed(false);
+          }).catch(error => {
+            if (controller.signal.aborted) return;
+            setLoading(false);
+            setFailed(true);
+          });
+          return () => controller.abort();
+        }, [committed, role, reloadToken]);
+
+        const showMore = () => {
+          const controller = new AbortController();
+          rpc.call(CHANNEL, 'dafeiyu-memory/browse', {
+            action: 'page', offset: nextOffset, limit: 40, preview: 110,
+            query: committed || null, role: role || null,
+          }, controller.signal).then(result => {
+            if (!result || result.ok !== true) throw new Error('browse failed');
+            setCells(previous => [...previous, ...result.value.items]);
+            setNextOffset(result.value.nextOffset);
+          }).catch(() => setFailed(true));
+        };
+
+        const openCell = cell => {
+          setActive(cell);
+          setDetail(null);
+          const controller = new AbortController();
+          rpc.call(CHANNEL, 'dafeiyu-memory/browse', { action: 'detail', id: cell.id }, controller.signal)
+            .then(result => {
+              if (!result || result.ok !== true) throw new Error('detail failed');
+              setDetail(result.value);
+            })
+            .catch(() => setDetail({ text: cell.preview, failed: true }));
+        };
+
+        const submit = event => {
+          event.preventDefault();
+          setCommitted(query.trim());
+        };
+
+        // 删除某个已失效会话的记忆。后端会再次校验"该会话确实不在绑定范围内"，
+        // 前端这层只是让用户看清将要删掉多少条。
+        const confirmDelete = sessionId => {
+          setDeleteBusy(true);
+          setDeleteError('');
+          const controller = new AbortController();
+          rpc.call(CHANNEL, 'dafeiyu-memory/browse',
+            { action: 'delete-session', sessionId, confirm: true }, controller.signal)
+            .then(result => {
+              if (!result || result.ok !== true) throw new Error(result?.error?.message || 'delete failed');
+              setPendingDelete('');
+              setReloadToken(token => token + 1);
+              setDeleteBusy(false);
+            })
+            .catch(error => {
+              setDeleteError(error && error.message ? error.message : 'delete failed');
+              setDeleteBusy(false);
+            });
+        };
+
+        const orphanGroups = React.useMemo(() => {
+          if (!inventory || !Array.isArray(inventory.items)) return [];
+          const map = new Map();
+          for (const item of inventory.items) {
+            if (!item.orphan) continue;
+            const entry = map.get(item.sessionId) ?? { sessionId: item.sessionId, messages: 0, lastAt: 0 };
+            entry.messages += item.messages;
+            entry.lastAt = Math.max(entry.lastAt, item.lastAt || 0);
+            map.set(item.sessionId, entry);
+          }
+          return [...map.values()].sort((a, b) => b.lastAt - a.lastAt);
+        }, [inventory]);
+
+        return h('section', { className: 'dfm-cells' },
+          h('div', { className: 'dfm-cells-head' },
+            h('div', null,
+              h('h2', { className: 'dfm-section-title' }, t('cellsTitle')),
+              h('p', { className: 'dfm-cells-sub' }, t('cellsSub'))),
+            h('div', { className: 'dfm-cells-count' },
+              h('strong', null, total.toLocaleString(localeId === 'zh' ? 'zh-CN' : 'en-US')),
+              h('span', null, t('cellsUnit')))),
+          orphanGroups.length
+            ? h('div', { className: 'dfm-orphans' },
+              h('div', { className: 'dfm-orphans-head' },
+                h('strong', null, t('orphanTitle')),
+                h('span', null, `${inventory.orphanMessages} ${t('orphanUnit')}`),
+                h('button', {
+                  type: 'button', className: 'dfm-orphans-toggle',
+                  'aria-expanded': orphanOpen,
+                  onClick: () => { setOrphanOpen(open => !open); setPendingDelete(''); setDeleteError(''); },
+                }, orphanOpen ? t('orphanHide') : t('orphanShow'))),
+              h('p', { className: 'dfm-orphans-note' }, t('orphanNote')),
+              orphanOpen
+                ? h('div', { className: 'dfm-orphans-list' },
+                  orphanGroups.map(group => h('div', { key: group.sessionId, className: 'dfm-orphans-row' },
+                    h('code', { className: 'dfm-orphans-id' }, group.sessionId),
+                    h('span', { className: 'dfm-orphans-meta' },
+                      `${group.messages} ${t('orphanMsgUnit')} · ${relativeTime(group.lastAt, localeId)}`),
+                    pendingDelete === group.sessionId
+                      ? h('span', { className: 'dfm-orphans-confirm' },
+                        h('span', null, t('orphanConfirm')),
+                        h('button', {
+                          type: 'button', className: 'dfm-orphans-danger', disabled: deleteBusy,
+                          onClick: () => confirmDelete(group.sessionId),
+                        }, deleteBusy ? t('orphanDeleting') : t('orphanDeleteYes')),
+                        h('button', {
+                          type: 'button', className: 'dfm-orphans-cancel', disabled: deleteBusy,
+                          onClick: () => { setPendingDelete(''); setDeleteError(''); },
+                        }, t('orphanDeleteNo')))
+                      : h('button', {
+                        type: 'button', className: 'dfm-orphans-delete',
+                        onClick: () => { setPendingDelete(group.sessionId); setDeleteError(''); },
+                      }, t('orphanDelete')))),
+                  deleteError ? h('p', { className: 'dfm-orphans-error' }, deleteError) : null)
+                : null)
+            : null,
+          h('form', { className: 'dfm-cells-search', onSubmit: submit },
+            h('input', {
+              type: 'search', value: query, placeholder: t('cellsSearchHint'),
+              onChange: event => setQuery(event.target.value), 'aria-label': t('cellsSearchHint'),
+            }),
+            h('div', { className: 'dfm-cells-filters', role: 'group', 'aria-label': t('cellsFilterLabel') },
+              [['', t('cellsAll')], ['user', t('cellsUser')], ['assistant', t('cellsAssistant')]].map(entry =>
+                h('button', {
+                  key: entry[0] || 'all', type: 'button',
+                  className: role === entry[0] ? 'dfm-cells-chip dfm-cells-chip--on' : 'dfm-cells-chip',
+                  'aria-pressed': role === entry[0],
+                  onClick: () => setRole(entry[0]),
+                }, entry[1]))),
+            h('button', { type: 'submit', className: 'dfm-cells-submit' }, t('cellsSearch'))),
+          loading && !cells.length
+            ? h('div', { className: 'dfm-cells-state' }, h('span', { className: 'dfm-cells-spinner', 'aria-hidden': 'true' }), t('cellsLoading'))
+            : null,
+          failed ? h('div', { className: 'dfm-cells-state dfm-cells-state--error' }, t('cellsFailed')) : null,
+          !loading && !failed && !cells.length ? h('div', { className: 'dfm-cells-state' }, t('cellsEmpty')) : null,
+          cells.length
+            ? h('div', { className: 'dfm-cells-field' },
+              cells.map(cell => {
+                const tone = cellTone(cell.id);
+                return h('button', {
+                  key: cell.id,
+                  type: 'button',
+                  className: cell.role === 'user' ? 'dfm-cell dfm-cell--user' : 'dfm-cell',
+                  style: {
+                    '--cell-hue': tone.hue,
+                    '--cell-size': `${cellSize(cell.chars)}px`,
+                    '--cell-x': ((cell.id * 37) % 100) / 100,
+                    '--cell-y': ((cell.id * 61) % 100) / 100,
+                    animationDelay: `${-tone.delay}s`,
+                  },
+                  title: cell.preview,
+                  onClick: () => openCell(cell),
+                },
+                  h('span', { className: 'dfm-cell-glow', 'aria-hidden': 'true' }),
+                  h('span', { className: 'dfm-cell-body' },
+                    h('span', { className: 'dfm-cell-text' }, cell.preview),
+                    h('span', { className: 'dfm-cell-meta' },
+                      h('span', null, relativeTime(cell.time, localeId)),
+                      h('span', { className: 'dfm-cell-dot', 'aria-hidden': 'true' }),
+                      h('span', null, String(cell.chars)))));
+              }),
+              nextOffset !== null
+                ? h('button', { type: 'button', className: 'dfm-cells-more', onClick: showMore }, t('cellsMore'))
+                : null)
+            : null,
+          active
+            ? h('div', {
+              className: 'dfm-cells-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('cellsDetail'),
+              onClick: event => { if (event.target === event.currentTarget) setActive(null); },
+            },
+              h('div', { className: 'dfm-cells-modal-card' },
+                h('div', { className: 'dfm-cells-modal-head' },
+                  h('span', { className: 'dfm-cells-modal-tag' }, active.role === 'user' ? t('cellsUser') : t('cellsAssistant')),
+                  h('span', { className: 'dfm-cells-modal-time' }, new Date(active.time).toLocaleString(localeId === 'zh' ? 'zh-CN' : 'en-US')),
+                  h('button', { type: 'button', className: 'dfm-cells-modal-close', onClick: () => setActive(null), 'aria-label': t('cellsClose') }, '×')),
+                h('div', { className: 'dfm-cells-modal-body' },
+                  detail ? h('p', null, detail.text) : h('p', { className: 'dfm-cells-modal-loading' }, t('cellsLoading')))))
+            : null);
+      }
+
       function useLocaleSnapshot() {
         const subscribe = React.useCallback(callback => locale.subscribe(callback), []);
         const getSnapshot = React.useCallback(() => locale.getSnapshot(), []);
@@ -481,6 +1028,7 @@ window.__ModuleLoader__.load({
         const [pendingDirectory, setPendingDirectory] = React.useState('');
         const [pendingTarget, setPendingTarget] = React.useState('');
         const [migrationConfirm, setMigrationConfirm] = React.useState(false);
+        const [scopeProbe, setScopeProbe] = React.useState(null);
         const [selectedSessionIds, setSelectedSessionIds] = React.useState(settings.bindingSessionIds ?? []);
         const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState(settings.bindingWorkspaceId ?? '');
         const [sessionItems, setSessionItems] = React.useState(settings.sessionPage?.items ?? []);
@@ -528,8 +1076,15 @@ window.__ModuleLoader__.load({
             if (!result || result.ok !== true || !result.value) {
               throw new Error(result?.error?.message || t('settingsErrorTitle'));
             }
-            setNotice(payload.action === 'change-database-directory' ? t('migrationChecking')
-              : payload.action === 'finalize-migration' ? t('migrationCleanupDone') : t('settingsSaved'));
+            const scope = result.value.scopeSwitch;
+            if (scope && scope.switched) {
+              setNotice(`${t('settingsSaved')} · ${t('scopeSwitchedTo')} ${result.value.databasePath}`);
+            } else if (result.value.warning) {
+              setNotice(result.value.warning);
+            } else {
+              setNotice(payload.action === 'change-database-directory' ? t('migrationChecking')
+                : payload.action === 'finalize-migration' ? t('migrationCleanupDone') : t('settingsSaved'));
+            }
           } catch (actionError) {
             setError(`${t('settingsErrorTitle')}: ${actionError?.message || t('settingsErrorTitle')}`);
           } finally {
@@ -539,6 +1094,29 @@ window.__ModuleLoader__.load({
             setPendingTarget('');
             setMigrationConfirm(false);
             onRefresh();
+          }
+        };
+
+        // 切换绑定范围前先探测目标范围是否已有历史记忆库。
+        // 有就让用户明确选择"读取已有"还是"换一个目录另存"，
+        // 避免在不知情的情况下把旧工作区的记忆"切换掉"。
+        // probe 只描述"要探测什么"，submit 才是真正的配置写入。
+        const beginScopeChange = async (probe, submit) => {
+          setBusy(true);
+          setError('');
+          setNotice('');
+          try {
+            const response = await rpc.call(CHANNEL, SETTINGS_ENDPOINT, { action: 'inspect-scope', ...probe });
+            const info = response && response.ok === true ? response.value : null;
+            if (info && info.exists && info.messages > 0) {
+              setScopeProbe({ path: info.path, messages: info.messages, submit });
+            } else {
+              await runAction(submit);
+            }
+          } catch (probeError) {
+            setError(`${t('settingsErrorTitle')}: ${probeError?.message || ''}`);
+          } finally {
+            setBusy(false);
           }
         };
         const loadMoreSessions = async () => {
@@ -752,6 +1330,29 @@ window.__ModuleLoader__.load({
                 }, t('chooseDirectory')),
                 !canChooseDirectory ? h('span', { className: 'dfm-setting-hint' }, t('settingsUnavailable')) : null))),
           sessionControls,
+          h('div', { className: 'dfm-setting dfm-setting--strict' },
+            h('span', { className: 'dfm-setting-label' }, t('strictScopeLabel')),
+            h('p', { className: 'dfm-setting-hint' }, t('strictScopeHint')),
+            h('p', { className: 'dfm-setting-hint' }, t('strictScopePath'), ': ',
+              h('code', null, settings.scopePath || t('strictScopeNoPath'))),
+            settings.scopeBackfill
+              ? h('p', { className: 'dfm-setting-hint' },
+                settings.scopeBackfill.state === 'ready'
+                  ? `${t('strictScopeBackfilled')} ${settings.scopeBackfill.sessions ?? 0}`
+                  : settings.scopeBackfill.state === 'failed'
+                    ? `${t('strictScopeBackfillFailed')} ${settings.scopeBackfill.error ?? ''}`
+                    : t('strictScopeBackfilling'))
+              : null,
+            h('div', { className: 'dfm-setting-actions' },
+              h('button', {
+                type: 'button', className: 'dfm-action', disabled: busy,
+                'aria-pressed': Boolean(settings.strictScope),
+                onClick: () => runAction({ action: 'set-strict-scope', enabled: !settings.strictScope }),
+              }, settings.strictScope ? t('strictScopeOn') : t('strictScopeOff')),
+              h('button', {
+                type: 'button', className: 'dfm-action dfm-action--quiet', disabled: busy,
+                onClick: () => runAction({ action: 'split-bank', sourceDatabase: settings.databasePath }),
+              }, t('strictScopeSplit')))),
           pendingMode ? h('div', { className: 'dfm-confirm' },
             h('p', null, t('modeConfirmBody')),
             h('div', { className: 'dfm-setting-actions' },
@@ -829,12 +1430,40 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'dfm-action dfm-action--quiet', disabled: busy, onClick: () => setPendingTarget('') }, t('cancel')),
               h('button', {
                 type: 'button', className: 'dfm-action', disabled: busy, 'aria-busy': busy,
-                onClick: () => runAction(pendingTarget === 'session'
-                  ? { action: 'set-session-targets', sessionIds: selectedSessionIds }
-                  : pendingTarget === 'session-default'
-                    ? { action: 'set-session-targets', sessionIds: null }
-                    : { action: 'set-workspace-target', workspaceId: selectedWorkspaceId }),
+                onClick: () => beginScopeChange(
+                  pendingTarget === 'session'
+                    ? { bindingMode: 'session', sessionIds: selectedSessionIds }
+                    : pendingTarget === 'session-default'
+                      ? { bindingMode: 'session', sessionIds: null }
+                      : { bindingMode: 'workspace', workspaceId: selectedWorkspaceId },
+                  pendingTarget === 'session'
+                    ? { action: 'set-session-targets', sessionIds: selectedSessionIds }
+                    : pendingTarget === 'session-default'
+                      ? { action: 'set-session-targets', sessionIds: null }
+                      : { action: 'set-workspace-target', workspaceId: selectedWorkspaceId }),
               }, busy ? t('savingSettings') : t('confirmChange')))) : null,
+          scopeProbe ? h('div', { className: 'dfm-confirm dfm-confirm--scope' },
+            h('p', null, t('scopeProbeTitle')),
+            h('p', { className: 'dfm-setting-hint' },
+              t('scopeProbeBody'), ' ', h('code', null, scopeProbe.path), ' ',
+              `${scopeProbe.messages} ${t('scopeProbeCount')}`),
+            h('div', { className: 'dfm-setting-actions' },
+              h('button', {
+                type: 'button', className: 'dfm-action dfm-action--quiet', disabled: busy,
+                onClick: () => { setScopeProbe(null); setPendingDirectory(''); },
+              }, t('scopeProbeCancel')),
+              h('button', {
+                type: 'button', className: 'dfm-action dfm-action--quiet', disabled: busy,
+                onClick: () => { setScopeProbe(null); setPendingTarget(''); },
+              }, t('scopeProbeChooseOther')),
+              h('button', {
+                type: 'button', className: 'dfm-action', disabled: busy, 'aria-busy': busy,
+                onClick: async () => {
+                  const pending = scopeProbe;
+                  setScopeProbe(null);
+                  if (pending) await runAction(pending.submit);
+                },
+              }, busy ? t('savingSettings') : t('scopeProbeUse')))) : null,
           migrationPanel,
           error ? h('p', { className: 'dfm-settings-message dfm-settings-error', role: 'alert' }, error) : null,
           notice ? h('p', { className: 'dfm-settings-message dfm-settings-success', role: 'status', 'aria-live': 'polite' }, notice) : null);
@@ -916,15 +1545,25 @@ window.__ModuleLoader__.load({
                 disabled: view.loading || view.settingsLoading,
                 'aria-busy': view.loading || view.settingsLoading,
               }, view.loading || view.settingsLoading ? t('refreshing') : t('retrySettings')));
+        // 顶部指标跟随绑定范围。数据库文件是物理文件、无法按会话切分，
+        // 所以它保持全库口径并明确标注；消息/片段/原文体积显示本范围，
+        // 并在下方给出全库对照，避免"数字对不上"的困惑。
+        const totals = data && data.bankTotals ? data.bankTotals : null;
+        const scopeNote = (value, total, format) =>
+          !totals || value === total ? null : `${t('scopeOfBank')} ${format(total, localeId)}`;
         const overviewItems = data ? [
           {
             id: 'database', label: t('dbTotal'), value: formatBytes(data.databaseFiles.totalBytes, localeId),
-            detail: `${t('mainFile')} ${formatBytes(data.databaseFiles.mainBytes, localeId)} · ${t('walFile')} ${formatBytes(data.databaseFiles.walBytes, localeId)} · ${t('shmFile')} ${formatBytes(data.databaseFiles.shmBytes, localeId)}`,
+            detail: `${t('mainFile')} ${formatBytes(data.databaseFiles.mainBytes, localeId)} · ${t('walFile')} ${formatBytes(data.databaseFiles.walBytes, localeId)} · ${formatBytes(data.databaseFiles.shmBytes, localeId)}`,
+            note: data.scoped ? t('dbSharedNote') : null,
             total: true,
           },
-          { id: 'original', label: t('originalText'), value: formatBytes(data.originalTextBytes, localeId) },
-          { id: 'messages', label: t('messageCount'), value: formatCount(data.messages, localeId) },
-          { id: 'chunks', label: t('chunkCount'), value: formatCount(data.chunks, localeId) },
+          { id: 'original', label: t('originalText'), value: formatBytes(data.originalTextBytes, localeId),
+            note: scopeNote(data.originalTextBytes, totals && totals.originalTextBytes, formatBytes) },
+          { id: 'messages', label: t('messageCount'), value: formatCount(data.messages, localeId),
+            note: scopeNote(data.messages, totals && totals.messages, formatCount) },
+          { id: 'chunks', label: t('chunkCount'), value: formatCount(data.chunks, localeId),
+            note: scopeNote(data.chunks, totals && totals.chunks, formatCount) },
         ] : [];
 
         return h('div', { className: 'dfm-page' },
@@ -954,11 +1593,14 @@ window.__ModuleLoader__.load({
                 h('dl', { className: 'dfm-overview' }, overviewItems.map(item =>
                   h('div', { key: item.id, className: item.total ? 'dfm-metric dfm-metric--total' : 'dfm-metric' },
                     h('dt', null, item.label),
-                    h('dd', null, item.value, item.detail ? h('small', null, item.detail) : null)))),
+                    h('dd', null, item.value,
+                      item.detail ? h('small', null, item.detail) : null,
+                      item.note ? h('small', { className: 'dfm-metric-scope' }, item.note) : null)))),
                 h('p', { className: 'dfm-updated' }, `${t('lastCapture')}: ${lastCapture || t('neverCaptured')}`)),
               data.messages === 0 ? h('p', { className: 'dfm-empty' },
                 h('strong', null, t('emptyTitle')),
                 t('emptyBody')) : null,
+              data.messages > 0 ? h(MemoryCells, { localeId }) : null,
               h(BreakdownTable, {
                 id: 'dfm-categories',
                 title: t('categoryTitle'),
