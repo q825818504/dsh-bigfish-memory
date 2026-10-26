@@ -478,6 +478,16 @@ export function apply(ctx,config){
             if(replaced.previousTargetPath){try{unlinkSync(replaced.previousTargetPath);}catch(cleanupError){console.error('[dafeiyu-memory] Could not remove replaced target backup',cleanupError);}}
           }
           if(persistenceError)throw new Error(`The settings update response was interrupted or rejected. The verified target remains at ${target}; the original database and sidecars were preserved. Refresh before retrying: ${persistenceError?.message??'unknown error'}`);
+          // Volatile config edits are committed in place without reloading this plugin, so
+          // `apply()` does not run again and this closure keeps its original snapshot. Update
+          // the in-memory values here or `read` would keep reporting the previous database.
+          value.database=target;
+          value.pendingMigrationFrom=source;
+          value.pendingMigrationTarget=target;
+          value.pendingMigrationId=migrationId;
+          value.pendingMigrationSourceIdentity=replaced.sourceIdentity;
+          migrationStatus={state:'checking'};
+          migrationTask=Promise.resolve().then(verifyPendingMigration);
           return {databasePath:target,changed:true,copied:true,migrationPending:true,migrationId,backfilledSessions:replaced.backfilledSessions};
         }
         if(payload.action==='retry-migration-verification'){
@@ -497,7 +507,7 @@ export function apply(ctx,config){
       else store.close();
       throw error;
     }
-    console.info(`[dafeiyu-memory] 1.3.1 已启用；bank=${value.bank}；mode=${value.bindingMode}；数据库=${value.database}`);
+    console.info(`[dafeiyu-memory] 1.3.2 已启用；bank=${value.bank}；mode=${value.bindingMode}；数据库=${value.database}`);
     return async()=>{
       try{for(const dispose of routeDisposers.reverse())await dispose();}
       finally{

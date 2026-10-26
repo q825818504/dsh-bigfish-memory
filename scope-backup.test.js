@@ -355,6 +355,36 @@ test('settings route falls back to active config when describe omits the nested 
   assert.equal(fixture.unversionedWrites, 3);
 });
 
+test('reading settings after a directory change reports the new database path', async t => {
+  // Volatile config edits commit in place without reloading the plugin, so the closure that
+  // serves `read` must refresh its own snapshot; otherwise the panel keeps showing the old path
+  // even though the copy succeeded and the profile was written.
+  const directory = temporaryDirectory();
+  const sourcePath = join(directory, 'source.sqlite3');
+  const targetDirectory = join(directory, 'chosen-target');
+  mkdirSync(targetDirectory);
+  const targetPath = join(targetDirectory, 'memory.sqlite3');
+  const source = new MemoryStore(sourcePath, 'dafeiyu');
+  addMessage(source, 'source-session', 'The directory change must be visible to the panel.');
+  source.close();
+
+  const fixture = createHostFixture({ database: sourcePath });
+  t.after(async () => { await fixture.close(); rmSync(directory, { recursive: true, force: true }); });
+
+  const before = await invokeSettings(fixture, { action: 'read' });
+  assert.equal(before.result.value.databasePath, resolve(sourcePath));
+
+  const changed = await invokeSettings(fixture, { action: 'change-database-directory', directory: targetDirectory, replaceTarget: true });
+  assert.equal(changed.result.ok, true, changed.result.error?.message);
+
+  const after = await invokeSettings(fixture, { action: 'read' });
+  assert.equal(after.result.value.databasePath, resolve(targetPath), 'read must report the switched database');
+  assert.equal(after.result.value.migration.targetPath, resolve(targetPath));
+  assert.equal(after.result.value.migration.sourcePath, resolve(sourcePath));
+  assert.equal(existsSync(targetPath), true);
+  assert.equal(existsSync(sourcePath), true, 'the source stays until explicit cleanup');
+});
+
 test('settings revision conflicts are reported without changing the active binding', async t => {
   const directory = temporaryDirectory();
   const fixture = createHostFixture({ database: join(directory, 'memory.sqlite3') });
@@ -503,7 +533,7 @@ test('manifest and lock advertise both rc.2 and rc.3 without shipping tests', ()
   const zh = JSON.parse(readFileSync(new URL('./locale/zh.json', import.meta.url), 'utf8'));
   const patch = readFileSync(new URL('./cordis.patch.yml', import.meta.url), 'utf8');
 
-  assert.equal(manifest.version, '1.3.1');
+  assert.equal(manifest.version, '1.3.2');
   assert.equal(lock.version, manifest.version);
   assert.equal(lock.packages[''].version, manifest.version);
   assert.match(manifest.engines.dsh, /0\.2\.1-rc\.2/);

@@ -2,7 +2,7 @@
 
 我也想养个大肥鱼，我想让她一直记着我。
 
-## 大肥鱼记忆插件 1.3.1
+## 大肥鱼记忆插件 1.3.2
 
 适配 DeepSeek Harness `0.2.1-rc.2` 与 `0.2.1-rc.3`，Node.js 22.16+。这是同时包含 Host bundle 与 Web Client 面板的 DSH 插件，不依赖 Python 或外部向量数据库。
 
@@ -43,7 +43,7 @@
 - 保存目录由用户在侧栏中选择，目标文件名固定为 `memory.sqlite3`。迁移先写入同目录 staging 文件，经目标重开、完整性和统计检查后才切换活动路径；新插件重开后还会再次回灌活动 session 并验证。旧数据库及 WAL/SHM 保留到验证成功、用户再次明确确认清理为止。
 - 若目标文件已存在，界面会显示精确路径并要求确认；仅接受可读、完整、schema 兼容且不含其他 bank 的记忆库，存在 WAL/SHM sidecar 或非本插件数据库时拒绝替换。设置 RPC 若中断，按结果不确定处理：旧库不清理，刷新面板后对账。
 - 保存绑定或位置设置前会显示确认。配置写入可能 live-reapply 插件，并根据 DSH session log 补录当前打开 session 历史，因此界面会先提示这一影响；迁移清理属于用户操作，agent 工具不能代替确认。
-- 原生目录选择需要本机 Desktop Host 与 OS 文件夹选择器；远程 Web/无本机对话框部署需替换为 DSH browse picker 组合。
+- 目录选择使用 DSH profile 提供的后端。`@deepseek-ai/dsh-host-directory-picker-auto` 在启动时判定一次：仅当无远程 authority 信任、仅回环绑定、非 SSH 启动且平台为 darwin/win32（或 linux 具备显示与 zenity/kdialog）时挂载 `native`（OS 文件夹对话框），否则挂载 `browse`（应用内浏览）。注意 `connection.trustedHosts` 只要包含一个非回环地址，`allowsRemoteAuthorities` 即为 true，自动判定就落到 `browse`；需要固定 OS 对话框时，在 profile 中直接组合 `-native` 那一对 backend/surface，而不是 `-auto`。本插件的面板对两种能力都做了适配：`native` 直接弹 OS 对话框，`browse` 在面板内提供目录浏览与新建文件夹。
 
 ## 侧栏管理页与统计口径
 
