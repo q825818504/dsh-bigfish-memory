@@ -7,12 +7,14 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { MemoryStore } from './lib/store.js';
 import { attach } from './lib/adapter.js';
+import { readMoodState, moodToEmotion } from './lib/mood-bridge.js';
 
 export const name='dafeiyu-memory';
 const CHANNEL='/api';
 const ENDPOINT='dafeiyu-memory/status';
 const SETTINGS_ENDPOINT='dafeiyu-memory/settings';
 const BROWSE_ENDPOINT='dafeiyu-memory/browse';
+const MOOD_ENDPOINT='dafeiyu-memory/mood';
 const SETTINGS_ENTRY_ID='include:dafeiyu-memory';
 const PATCH_ID='dafeiyu-memory';
 const SESSION_PAGE_SIZE=100;
@@ -789,6 +791,36 @@ export function apply(ctx,config){
           sessionIds,
         });
       },'memory_browse_failed'));
+      /* 心情对接：只读 dsh-feiyu-mood 的 state.json，把当前心情与时间线
+         折算成星图需要的情绪坐标。心情插件未安装/文件损坏时返回
+         available:false，前端据此降级为随机色，绝不报错。 */
+      routeDisposers.push(registerRpcRoute(ctx,MOOD_ENDPOINT,async payload=>{
+        const state=readMoodState();
+        if(!state){
+          return {available:false,reason:'mood_plugin_unavailable'};
+        }
+        const key=state.lastActive&&state.moods[state.lastActive]
+          ?state.lastActive
+          :Object.keys(state.moods)[0];
+        const slot=key?state.moods[key]:null;
+        if(!slot)return {available:false,reason:'no_active_slot'};
+        const current=moodToEmotion(slot);
+        const timeline=Array.isArray(slot.timeline)?slot.timeline:[];
+        // 只回传着色所需的字段，不回传 reason 等文本（可能含隐私内容）
+        const points=timeline
+          .filter(t=>Number.isFinite(Number(t?.at)))
+          .map(t=>({at:Number(t.at),...moodToEmotion(t)}))
+          .slice(-500);
+        return {
+          available:true,
+          key,
+          mood:Number.isFinite(Number(slot.mood))?Number(slot.mood):70,
+          updatedAt:Number(slot.updatedAt)||0,
+          current,
+          points,
+          hasTimeline:points.length>0,
+        };
+      },'memory_mood_failed'));
       routeDisposers.push(registerRpcRoute(ctx,SETTINGS_ENDPOINT,async payload=>{
         if(!payload||typeof payload!=='object'||Array.isArray(payload))throw new Error('Invalid settings request');
         if(payload.action==='read'){

@@ -1013,6 +1013,37 @@ window.__ModuleLoader__.load({
         const drift = (Math.abs(hash >> 8) % 14) - 7;
         return { hue: (hue + drift + 360) % 360, delay: (Math.abs(hash >> 16) % 420) / 100 };
       }
+      /* ── 情绪着色（对接 dsh-feiyu-mood）──────────────────────────
+         有心情数据时：按记忆发生时刻的心情取 Russell 四色；
+         没有时：退回 id 哈希的随机色（保证界面照常可用）。 */
+      function emotionAt(moodState, time) {
+        if (!moodState || !moodState.available) return null;
+        const points = Array.isArray(moodState.points) ? moodState.points : [];
+        if (!points.length) {
+          // 还没判断过任何一轮 → 全部用当前心情
+          return moodState.current || null;
+        }
+        const ts = Number(time);
+        if (!Number.isFinite(ts)) return moodState.current || null;
+        let best = null;
+        for (const p of points) {
+          if (!Number.isFinite(p.at)) continue;
+          if (p.at <= ts && (!best || p.at > best.at)) best = p;
+        }
+        if (best) return best;
+        // 目标早于全部记录 → 用最早一条近似
+        const sorted = [...points].filter(p => Number.isFinite(p.at))
+          .sort((a, b) => a.at - b.at);
+        return sorted.length ? sorted[0] : (moodState.current || null);
+      }
+      /* 把情绪色与哈希色合成一个 tone：有情绪时用情绪色相，
+         但仍保留哈希的浮动延迟，让每颗球呼吸节奏不同。 */
+      function toneFor(cell, moodState) {
+        const base = cellTone(cell.id);
+        const emo = emotionAt(moodState, cell.time);
+        if (!emo || !emo.color) return { ...base, emotion: null };
+        return { hue: emo.color.hue, delay: base.delay, emotion: emo };
+      }
       /* 尺寸：由热度决定（不是字数）。
          热度高的记忆是"大星"，热度低的是远处的小星点。 */
       function cellSize(heat) {
@@ -1129,6 +1160,8 @@ window.__ModuleLoader__.load({
         const [failed, setFailed] = React.useState(false);
         const [active, setActive] = React.useState(null);
         const [detail, setDetail] = React.useState(null);
+        /* 心情插件状态：null = 未安装/不可用，前端据此降级为随机色 */
+        const [mood, setMood] = React.useState(null);
         const [inventory, setInventory] = React.useState(null);
         const [orphanOpen, setOrphanOpen] = React.useState(false);
         const [pendingDelete, setPendingDelete] = React.useState('');
@@ -1152,13 +1185,20 @@ window.__ModuleLoader__.load({
         React.useEffect(() => {
           const controller = new AbortController();
           setLoading(true);
-          rpc.call(CHANNEL, 'dafeiyu-memory/browse', {
+          /* 同时拉记忆列表与心情状态：两个请求互不阻塞，
+             心情拿不到也不影响列表显示（降级为基线色）。 */
+          const moodPromise = rpc.call(CHANNEL, 'dafeiyu-memory/mood', {}, controller.signal)
+            .then(r => (r && r.ok === true ? r.value : null))
+            .catch(() => null);
+          const pagePromise = rpc.call(CHANNEL, 'dafeiyu-memory/browse', {
             action: 'page', offset: 0, limit: 40, preview: 110,
             query: committed || null, role: role || null,
-          }, controller.signal).then(result => {
+          }, controller.signal);
+          Promise.all([pagePromise, moodPromise]).then(([result, mood]) => {
             if (!result || result.ok !== true) throw new Error(result?.error?.message || 'browse failed');
             setCells(result.value.items);
             setTotal(result.value.total);
+            setMood(mood);
             setLoading(false);
             setFailed(false);
           }).catch(error => {
@@ -1368,7 +1408,8 @@ window.__ModuleLoader__.load({
               const n = shown.length;
               const placed = shown.map((cell, i) => {
                 const heat = Number.isFinite(cell.heat) ? cell.heat : 0.5;
-                const tone = cellTone(cell.id);
+                // 有心情数据时按记忆时刻的心情取色，否则退回哈希随机色
+                const tone = toneFor(cell, mood);
                 // 归一化半径：sqrt 让面积均匀（否则中心过密）
                 const rr = n === 1 ? 0 : Math.sqrt((i + 0.5) / n);
                 // 环绕核心的紧凑星环：内圈给形象留白，外圈不贴边

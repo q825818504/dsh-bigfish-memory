@@ -85,7 +85,9 @@
     "@deepseek-ai/schemastery": "~3.18.5"
   },
   "scripts": {
-    "test": "node --test ./scope-backup.test.js"
+    "test": "node --test ./scope-backup.test.js",
+    "test:contract": "node ./memory-contract.test.js",
+    "test:mood": "node ./mood-bridge.test.js"
   },
   "license": "MIT"
 }
