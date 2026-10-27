@@ -8,7 +8,8 @@
     ".": "./index.js",
     "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.svg",
+    "./mascot": "./mascot.webp"
   },
   "files": [
     "index.js",
@@ -20,7 +21,8 @@
     "PRODUCT.md",
     "LICENSE",
     "locale/*.json",
-    "icon.svg"
+    "icon.svg",
+    "mascot.webp"
   ],
   "bin": {
     "dafeiyu-memory": "cli.js"

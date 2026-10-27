@@ -57,20 +57,26 @@
 
 开启方式：侧栏「大肥鱼记忆管理」→「强制范围模式」→ 点击开启。首次使用建议先执行一次拆分。
 
-## 记忆细胞视图
+## 记忆星图
 
-侧栏管理页顶部展示当前范围内每条记忆的彩色细胞：
+侧栏管理页的主体是一张**伪 3D 星图**（纯 CSS 实现，不依赖 WebGL）：
 
-- 颜色由记忆 ID 哈希决定，同一条记忆永远同色，可作为稳定的视觉身份线索。
-- 尺寸映射正文长度（58px 到 132px），长记忆明显更大。
-- 支持关键词搜索与按说话人筛选；点击查看原文全文。
-- 只显示当前绑定范围内的记忆，与顶部统计口径一致。
+- **灵魂核心**：面板中央是大肥鱼形象，代表「我是谁」的那条记忆。形象图内嵌为 data URI（31KB WebP），不依赖静态文件服务。
+- **记忆星**：一屏展示约 12 颗有实质内容的记忆。**尺寸与景深由热度决定**——热的记忆更大、更亮、浮在前面；冷的记忆更小、更暗、沉在后面，形成前后层次。
+- **星座连线**：同一条会话线上的记忆连成短链（复用既有 `anchors` 表，不新增 schema）。
+- **名牌常驻**：每颗球下方一直显示「摘要 · 日期」。摘要是本地算法从正文里挑出的**信息密度最高的一句**，不是简单截断开头。
+- **点球**：球放大、亮一圈柔光、浮到最前，其余球变暗退后。
+- **点名牌**：底部滑出半透明正文抽屉，点 × 或按 Esc 收起。
+
+球色由记忆 ID 哈希决定，同一条记忆永远同色。
+
+> 短于 40 字的消息不上星图（避免「好的」「继续」这类过渡句占满画面），但它们仍在库里、仍参与召回。
 
 ## 孤儿记忆管理
 
 会话被删除后，它产生的记忆**仍然保留**——记忆的价值恰恰在于会话没了它还在。
 
-这些记忆会被标记为孤儿，在细胞视图上方单独提示，显示来源会话 ID、记忆条数和最后时间。用户可以选择清理：删除时在同一个事务里清理 messages、chunks、search_index、activations、anchor_sources、groups、replays，不会留下悬空引用。
+这些记忆会被标记为孤儿，在星图上方单独提示，显示来源会话 ID、记忆条数和最后时间。用户可以选择清理：删除时在同一个事务里清理 messages、chunks、search_index、activations、anchor_sources、groups、replays，不会留下悬空引用。
 
 删除需要两步确认，且后端会再次校验该会话确实已不存在——仍在使用的会话不允许删除记忆。
 
@@ -146,3 +152,21 @@ SQLite 和 WAL/Journals 使用本地明文文件。插件不连接网络或模�
 ## DSH 对接点
 
 插件按官方的 `apply(ctx)`、`ctx.on()`、`ctx.effect()`、`ctx.tools.register(defineTool(...))` 和组合包 `package.json`/`cordis.patch.yml` 编写。使用 session 追加事件、持久化 `sessionQuery.readSession`、`agent/pre-step` 和 `systemPrompt.context`，适配 DSH 的压缩与请求流程。管理页以 `sidebar.panellist` + keyed `main` Slot 接入；统计区只接收聚合数据，设置区经认证 Connection 读取绑定模式和数据库路径，聊天原文不会传到 Client。参考：[插件基础](https://deepseek-harness.github.io/deepseek-harness/develop/basic/)、[工具](https://deepseek-harness.github.io/deepseek-harness/develop/basic/tool)、[安装](https://deepseek-harness.github.io/deepseek-harness/develop/basic/publish)、[会话](https://deepseek-harness.github.io/deepseek-harness/reference/subsystems/session)、[上下文压缩](https://deepseek-harness.github.io/deepseek-harness/reference/subsystems/compaction)。
+
+## 开发期工具（可选）
+
+这些脚本用于本地开发与数据准备，不参与插件运行时：
+
+| 脚本 | 作用 |
+|---|---|
+| `dev-backfill.js` | 从 DSH session 日志（zstd 多帧）回灌真实对话到记忆库 |
+| `dev-seed-stars.js` | 按会话建星座、拉开热度梯度、标记灵魂核心 |
+| `dev-sync-stars.js` | 补齐新消息的星座关联（幂等） |
+| `dev-apply-stars.js` | 直接向运行中的库写入星座数据（DSH 开着也能用） |
+| `dev-prep-mascot.py` | 把形象图裁边、缩放、转 WebP（需 Pillow） |
+
+用法示例：`node dev-apply-stars.js "D:\大肥鱼\记忆\workspace-xxxxxxxx.sqlite3"`
+
+想换掉灵魂核心的形象图：准备一张带透明通道的 PNG，运行
+`python dev-prep-mascot.py <源图> mascot.webp`，再用脚本把 `mascot.webp`
+转成 data URI 替换 `client.js` 里的 `MASCOT_URI` 常量。
