@@ -533,7 +533,9 @@ test('manifest and lock advertise both rc.2 and rc.3 without shipping tests', ()
   const zh = JSON.parse(readFileSync(new URL('./locale/zh.json', import.meta.url), 'utf8'));
   const patch = readFileSync(new URL('./cordis.patch.yml', import.meta.url), 'utf8');
 
-  assert.equal(manifest.version, '1.3.2');
+  // 版本号不再写死具体值（每次升版本都会红），改为校验格式合法，
+  // 同时保留真正的契约：package-lock.json 必须与 manifest 同步。
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.equal(lock.version, manifest.version);
   assert.equal(lock.packages[''].version, manifest.version);
   assert.match(manifest.engines.dsh, /0\.2\.1-rc\.2/);
